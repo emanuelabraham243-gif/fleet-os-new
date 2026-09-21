@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f8f8;
+  --foreground: #14201f;
+  --surface: #ffffff;
+  --muted: #4b5b5a;
+  --muted-soft: #e9eeee;
+  --muted-ink: #3f4c4b;
+  --line: #cdd8d7;
+  --brand: #0f766e;
+  --brand-strong: #0b5f58;
+  --brand-ink: #0b5f58;
+  --on-brand: #ffffff;
+  --ok-soft: #dcf5e6;
+  --ok-ink: #0f5a2c;
+  --warn-soft: #fdf0c8;
+  --warn-ink: #6b4500;
+  --bad-soft: #fde1df;
+  --bad-ink: #8a1c14;
+  --info-soft: #dbeafe;
+  --info-ink: #1e40af;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1211;
+    --foreground: #e8f0ef;
+    --surface: #131d1c;
+    --muted: #a8b8b6;
+    --muted-soft: #1d2a29;
+    --muted-ink: #c3d0ce;
+    --line: #2d3d3b;
+    --brand: #2dd4bf;
+    --brand-strong: #5eead4;
+    --brand-ink: #5eead4;
+    --on-brand: #04201d;
+    --ok-soft: #12351f;
+    --ok-ink: #a7f0c2;
+    --warn-soft: #3a2e0a;
+    --warn-ink: #fbdc8a;
+    --bad-soft: #401614;
+    --bad-ink: #fbb4ae;
+    --info-soft: #172a52;
+    --info-ink: #bcd3fb;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-muted-soft: var(--muted-soft);
+  --color-muted-ink: var(--muted-ink);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-ink: var(--brand-ink);
+  --color-on-brand: var(--on-brand);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-ink: var(--ok-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-ink: var(--warn-ink);
+  --color-bad-soft: var(--bad-soft);
+  --color-bad-ink: var(--bad-ink);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+  --font-sans: var(--font-geist-sans), var(--font-ethiopic), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), var(--font-ethiopic), system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+button,
+a,
+summary,
+select,
+input[type="submit"] {
+  min-height: 48px;
+}
+
+a:not([class]) {
+  min-height: 0;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
