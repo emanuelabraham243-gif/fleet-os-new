@@ -8,6 +8,7 @@ import {
   type MaintStatus,
 } from '@/lib/maintenance-rules';
 import { Card, Chips, EmptyState, Flash, PageHeader, Section, StatusBadge } from '@/components/ui';
+import { rows as unwrap } from '@/components/home/query';
 import { VoidForm } from '@/components/forms-core';
 import { ServiceForm } from './service-form';
 import { ScheduleForm } from './schedule-form';
@@ -80,6 +81,7 @@ function ScheduleCard({ s, i18n, today }: { s: Schedule; i18n: I18n; today: stri
         ) : null}
         {dueKm != null ? (
           <div>
+            <dt className="sr-only">{t('maintenance.dueKmLabel')}</dt>
             <dd>
               {t('maintenance.dueKm', { km: formatKm(dueKm, locale) })}
               {left != null ? (
@@ -94,6 +96,7 @@ function ScheduleCard({ s, i18n, today }: { s: Schedule; i18n: I18n; today: stri
           </div>
         ) : null}
         <div>
+          <dt className="sr-only">{t('maintenance.odometer')}</dt>
           <dd className="text-muted">
             {current != null
               ? t('maintenance.currentOdometer', { km: formatKm(current, locale) })
@@ -102,6 +105,7 @@ function ScheduleCard({ s, i18n, today }: { s: Schedule; i18n: I18n; today: stri
         </div>
         {s.interval_km != null || s.interval_days != null ? (
           <div>
+            <dt className="sr-only">{t('maintenance.intervalLabel')}</dt>
             <dd className="text-sm text-muted">
               {[
                 s.interval_km != null ? t('maintenance.everyKm', { km: formatKm(num(s.interval_km), locale) }) : null,
@@ -143,15 +147,15 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
     supabase.from('service_records').select('category').is('voided_at', null).limit(1000),
   ]);
 
-  const vehicles = (vehiclesRes.data ?? []) as {
+  const vehicles = unwrap<{
     id: string; name: string; plate_number: string; current_odometer: number | string | null;
-  }[];
+  }>(vehiclesRes);
   const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
-  const allSchedules = (schedulesRes.data ?? []) as Schedule[];
+  const allSchedules = unwrap<Schedule>(schedulesRes);
 
   const catCodes = new Set<string>();
   for (const s of allSchedules) catCodes.add(s.service_category);
-  for (const r of (catsRes.data ?? []) as { category: string }[]) catCodes.add(r.category);
+  for (const r of unwrap<{ category: string }>(catsRes)) catCodes.add(r.category);
   const orderedCats = [
     ...SERVICE_CATEGORIES.filter((c) => catCodes.has(c)),
     ...[...catCodes].filter((c) => !(SERVICE_CATEGORIES as readonly string[]).includes(c)).sort(),
@@ -169,7 +173,7 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
   if (activeCategory) recQuery = recQuery.eq('category', activeCategory);
   if (activeVehicle) recQuery = recQuery.eq('vehicle_id', activeVehicle);
   const recRes = await recQuery;
-  const records = (recRes.data ?? []) as ServiceRow[];
+  const records = unwrap<ServiceRow>(recRes);
 
   const schedules = allSchedules.filter(
     (s) => (!activeCategory || s.service_category === activeCategory) && (!activeVehicle || s.vehicle_id === activeVehicle),
@@ -297,25 +301,28 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
                     <p className="shrink-0 text-base">{formatDate(r.service_date, locale)}</p>
                   </div>
                   <dl className="mt-2 space-y-1 text-base">
-                    <div>
-                      <dd>
-                        {t('maintenance.cost')}:{' '}
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted">{t('maintenance.cost')}</dt>
+                      <dd className="tabular-nums">
                         {cents != null ? formatEtb(cents, locale) : t('maintenance.costUnknown')}
                       </dd>
                     </div>
                     {r.service_provider ? (
-                      <div>
-                        <dd>
-                          {t('maintenance.provider')}: {r.service_provider}
-                        </dd>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted">{t('maintenance.provider')}</dt>
+                        <dd className="text-right">{r.service_provider}</dd>
                       </div>
                     ) : null}
-                    <div>
-                      <dd>
-                        {t('maintenance.odometer')}: {odo != null ? formatKm(odo, locale) : t('common.unknown')}
-                      </dd>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted">{t('maintenance.odometer')}</dt>
+                      <dd className="tabular-nums">{odo != null ? formatKm(odo, locale) : t('common.unknown')}</dd>
                     </div>
-                    {r.description ? <div><dd className="text-muted">{r.description}</dd></div> : null}
+                    {r.description ? (
+                      <div>
+                        <dt className="sr-only">{t('maintenance.descriptionLabel')}</dt>
+                        <dd className="text-muted">{r.description}</dd>
+                      </div>
+                    ) : null}
                   </dl>
                   {admin ? (
                     <div className="mt-3">

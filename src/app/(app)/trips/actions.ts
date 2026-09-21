@@ -20,7 +20,7 @@ const createSchema = z.object({
 });
 
 export async function createTrip(_prev: FormState, fd: FormData): Promise<FormState> {
-  const { profile } = await requireViewer();
+  await requireViewer();
   const raw = formValues(fd);
   const confirm = raw.confirm === '1';
   const values = { ...raw };
@@ -55,36 +55,24 @@ export async function createTrip(_prev: FormState, fd: FormData): Promise<FormSt
     }
   }
 
-  const { data: trip, error } = await supabase
-    .from('trips')
-    .insert({
-      organization_id: profile.organization_id,
-      vehicle_id: d.vehicle_id,
-      driver_id: d.driver_id,
-      trip_date: d.trip_date,
-      origin: d.origin,
-      destination: d.destination,
-      status: d.status,
-    })
-    .select('id')
-    .single();
-  if (error || !trip) return { error: mapDbError(error), values };
-
-  let warn = '';
-  if (revenue) {
-    const { error: revErr } = await supabase.from('trip_revenue').insert({
-      organization_id: profile.organization_id,
-      trip_id: trip.id,
-      amount: revenue,
-      revenue_date: d.trip_date,
-    });
-    if (revErr) warn = '&warn=revenueFailed';
-  }
+  // Atomic: the trip and its optional revenue are saved together or not at all.
+  const { error } = await supabase.rpc('create_trip_with_revenue', {
+    p_vehicle_id: d.vehicle_id,
+    p_driver_id: d.driver_id,
+    p_trip_date: d.trip_date,
+    p_origin: d.origin,
+    p_destination: d.destination,
+    p_status: d.status,
+    p_notes: null,
+    p_revenue: revenue ?? null,
+    p_revenue_description: null,
+  });
+  if (error) return { error: mapDbError(error), values };
 
   revalidatePath('/trips');
   revalidatePath('/expenses');
   revalidatePath('/vehicles');
-  redirect(`/trips?saved=1${warn}`);
+  redirect('/trips?saved=1');
 }
 
 const statusSchema = z.object({ id: zUuid(), to: z.string() });

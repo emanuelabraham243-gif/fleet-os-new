@@ -33,8 +33,16 @@ export async function updateSession(request: NextRequest) {
   );
 
   const { data } = await supabase.auth.getClaims();
+  let authenticated = Boolean(data?.claims);
+  if (!authenticated && !isPublic(request.nextUrl.pathname)) {
+    // getClaims() validates the JWT locally and rejects tokens on clock skew.
+    // getUser() is server-validated, so use it before treating the user as anonymous.
+    const { data: userData } = await supabase.auth.getUser();
+    authenticated = Boolean(userData?.user);
+  }
 
-  if (!data?.claims && !isPublic(request.nextUrl.pathname)) {
+  // Never redirect authenticated users away from /login here (the page decides).
+  if (!authenticated && !isPublic(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.search = '';

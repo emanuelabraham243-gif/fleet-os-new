@@ -35,6 +35,28 @@ describe('fuelEfficiency', () => {
   });
 });
 
+describe('fuelEfficiency unmatched fills', () => {
+  it('is insufficient when a fill between first and last odometer fill has no odometer', () => {
+    expect(
+      fuelEfficiency([
+        { date: '2026-09-01', quantity: 40, odometer: 1000 },
+        { date: '2026-09-10', quantity: 30, odometer: null },
+        { date: '2026-09-20', quantity: 40, odometer: 1600 },
+      ]),
+    ).toEqual({ status: 'insufficient', reason: 'missing_odometer_in_span' });
+  });
+  it('ignores null-odometer fills outside the span', () => {
+    expect(
+      fuelEfficiency([
+        { date: '2026-08-01', quantity: 30, odometer: null },
+        { date: '2026-09-01', quantity: 40, odometer: 1000 },
+        { date: '2026-09-20', quantity: 40, odometer: 1600 },
+        { date: '2026-09-25', quantity: 30, odometer: null },
+      ]),
+    ).toEqual({ status: 'ok', value: 600 / 40 });
+  });
+});
+
 describe('misc calc', () => {
   it('odometerSpan', () => {
     expect(odometerSpan([100, null, 350])).toBe(250);
@@ -42,6 +64,7 @@ describe('misc calc', () => {
   });
   it('costPerKm', () => {
     expect(costPerKm(10000, 100)).toEqual({ status: 'ok', value: 100 });
+    expect(costPerKm(10000, 100, 2)).toEqual({ status: 'ok', value: 100, excluded: 2 });
     expect(costPerKm(10000, null).status).toBe('insufficient');
     expect(costPerKm(10000, 0).status).toBe('insufficient');
     expect(costPerKm(0, 50).status).toBe('insufficient');
@@ -52,11 +75,14 @@ describe('misc calc', () => {
   });
   it('monthProfit excludes trips without revenue', () => {
     const m = monthProfit([
-      { revenue: 1000.1, expenses: 200.2, has_revenue: true },
-      { revenue: null, expenses: 999, has_revenue: false },
+      { status: 'COMPLETED', revenue: 1000.1, expenses: 200.2, has_revenue: true },
+      { status: 'COMPLETED', revenue: null, expenses: 999, has_revenue: false },
+      { status: 'IN_PROGRESS', revenue: 50000, expenses: 1, has_revenue: true },
+      { status: 'PLANNED', revenue: null, expenses: 1, has_revenue: false },
+      { status: 'CANCELLED', revenue: 70000, expenses: 1, has_revenue: true },
     ]);
     expect(m).toEqual({ status: 'ok', value: 79990, excluded: 1 });
-    expect(monthProfit([{ revenue: null, expenses: 5, has_revenue: false }]).status).toBe('insufficient');
+    expect(monthProfit([{ status: 'COMPLETED', revenue: null, expenses: 5, has_revenue: false }]).status).toBe('insufficient');
     expect(monthProfit([]).status).toBe('insufficient');
   });
 });

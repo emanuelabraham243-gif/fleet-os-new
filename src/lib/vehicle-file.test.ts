@@ -52,56 +52,82 @@ const fin = (o: Partial<FinancialRow>): FinancialRow => ({
 });
 
 describe('computeVehicleMetrics', () => {
-  it('cost per km uses trip expenses + service, not fuel records', () => {
+  it('cost per km = fuel records + service + non-FUEL trip expenses (no double counting)', () => {
     const m = computeVehicleMetrics({
       today: TODAY,
       fuel: [
-        { id: 'f1', fuel_date: '2026-09-01', quantity: 40, total_amount: 9999, odometer: 1000 },
-        { id: 'f2', fuel_date: '2026-09-15', quantity: 40, total_amount: 9999, odometer: 1500 },
+        { id: 'f1', fuel_date: '2026-09-01', quantity: 40, total_amount: 1000, odometer: 1000 },
+        { id: 'f2', fuel_date: '2026-09-15', quantity: 40, total_amount: 1000, odometer: 1500 },
       ],
       service: [{ id: 's1', service_date: '2026-09-05', category: 'OIL_CHANGE', cost: 500, odometer: 1100 }],
-      tripExpenses: [{ amount: 1500, expense_date: '2026-09-02' }],
+      tripExpenses: [
+        { trip_id: 't1', category: 'TOLL', amount: 300, expense_date: '2026-09-02' },
+        { trip_id: 't1', category: 'FUEL', amount: 9999, expense_date: '2026-09-02' },
+      ],
       financials: [],
+      eligibleTripIds: ['t1'],
     });
-    // (1500 + 500) ETB = 200000 cents over 500 km
-    expect(m.costPerKm).toEqual({ status: 'ok', value: 400 });
+    // (1000 + 1000 + 500 + 300) ETB = 280000 cents over 500 km; trip FUEL expense not counted
+    expect(m.costPerKm).toEqual({ status: 'ok', value: 560 });
     expect(m.fuelEfficiency.status).toBe('ok');
   });
-  it('ignores voided rows, null service costs and out-of-window rows', () => {
+  it('excludes expenses of voided/cancelled (non-eligible) trips', () => {
     const m = computeVehicleMetrics({
       today: TODAY,
       fuel: [
-        { id: 'f1', fuel_date: '2026-09-01', quantity: 40, total_amount: 1, odometer: 1000 },
-        { id: 'f2', fuel_date: '2026-09-15', quantity: 40, total_amount: 1, odometer: 1200 },
-        { id: 'f3', fuel_date: '2026-09-16', quantity: 40, total_amount: 1, odometer: 9000, voided_at: 'x' },
-        { id: 'f4', fuel_date: '2026-01-01', quantity: 40, total_amount: 1, odometer: 1 },
+        { id: 'f1', fuel_date: '2026-09-01', quantity: 10, total_amount: 100, odometer: 1000 },
+        { id: 'f2', fuel_date: '2026-09-02', quantity: 10, total_amount: 100, odometer: 1100 },
       ],
-      service: [{ id: 's1', service_date: '2026-09-05', category: 'X', cost: null, odometer: null }],
+      service: [],
       tripExpenses: [
-        { amount: 100.1, expense_date: '2026-09-02' },
-        { amount: 0.2, expense_date: '2026-09-03' },
-        { amount: 5000, expense_date: '2026-09-03', voided_at: 'x' },
-        { amount: 5000, expense_date: '2026-01-03' },
+        { trip_id: 'ok', category: 'TOLL', amount: 50, expense_date: '2026-09-02' },
+        { trip_id: 'cancelled', category: 'TOLL', amount: 5000, expense_date: '2026-09-02' },
+        { trip_id: 'voided', category: 'OTHER', amount: 5000, expense_date: '2026-09-02' },
       ],
       financials: [],
+      eligibleTripIds: ['ok'],
     });
-    // 10010 + 20 = 10030 cents over 200 km
-    expect(m.costPerKm).toEqual({ status: 'ok', value: 10030 / 200 });
+    // 10000 + 10000 + 5000 cents over 100 km
+    expect(m.costPerKm).toEqual({ status: 'ok', value: 250 });
+  });
+  it('ignores voided rows and out-of-window rows; counts null service cost as excluded', () => {
+    const m = computeVehicleMetrics({
+      today: TODAY,
+      fuel: [
+        { id: 'f1', fuel_date: '2026-09-01', quantity: 40, total_amount: 0.1, odometer: 1000 },
+        { id: 'f2', fuel_date: '2026-09-15', quantity: 40, total_amount: 0.2, odometer: 1200 },
+        { id: 'f3', fuel_date: '2026-09-16', quantity: 40, total_amount: 500, odometer: 9000, voided_at: 'x' },
+        { id: 'f4', fuel_date: '2026-01-01', quantity: 40, total_amount: 500, odometer: 1 },
+      ],
+      service: [
+        { id: 's1', service_date: '2026-09-05', category: 'X', cost: null, odometer: null },
+        { id: 's2', service_date: '2026-09-06', category: 'X', cost: 100, odometer: null, voided_at: 'x' },
+      ],
+      tripExpenses: [
+        { trip_id: 't', category: 'TOLL', amount: 100, expense_date: '2026-09-02' },
+        { trip_id: 't', category: 'TOLL', amount: 5000, expense_date: '2026-09-03', voided_at: 'x' },
+        { trip_id: 't', category: 'TOLL', amount: 5000, expense_date: '2026-01-03' },
+      ],
+      financials: [],
+      eligibleTripIds: ['t'],
+    });
+    // 10 + 20 + 10000 = 10030 cents over 200 km
+    expect(m.costPerKm).toEqual({ status: 'ok', value: 10030 / 200, excluded: 1 });
   });
   it('is insufficient without distance or cost', () => {
     const base = { today: TODAY, service: [], financials: [] };
     const noDist = computeVehicleMetrics({
       ...base,
-      fuel: [{ id: 'f', fuel_date: '2026-09-01', quantity: 10, total_amount: 1, odometer: 10 }],
-      tripExpenses: [{ amount: 10, expense_date: '2026-09-02' }],
+      fuel: [{ id: 'f', fuel_date: '2026-09-01', quantity: 10, total_amount: 0, odometer: 10 }],
+      tripExpenses: [{ trip_id: 't', category: 'TOLL', amount: 10, expense_date: '2026-09-02' }],
     });
     expect(noDist.costPerKm.status).toBe('insufficient');
     expect(noDist.fuelEfficiency.status).toBe('insufficient');
     const noCost = computeVehicleMetrics({
       ...base,
       fuel: [
-        { id: 'a', fuel_date: '2026-09-01', quantity: 10, total_amount: 1, odometer: 10 },
-        { id: 'b', fuel_date: '2026-09-02', quantity: 10, total_amount: 1, odometer: 110 },
+        { id: 'a', fuel_date: '2026-09-01', quantity: 10, total_amount: 0, odometer: 10 },
+        { id: 'b', fuel_date: '2026-09-02', quantity: 10, total_amount: 0, odometer: 110 },
       ],
       tripExpenses: [],
     });
@@ -129,9 +155,33 @@ describe('computeVehicleMetrics', () => {
     });
     expect(none.monthProfit.status).toBe('insufficient');
   });
+  it('month profit ignores PLANNED, IN_PROGRESS and CANCELLED trips', () => {
+    const m = computeVehicleMetrics({
+      today: TODAY,
+      fuel: [],
+      service: [],
+      tripExpenses: [],
+      financials: [
+        fin({ trip_id: 'a' }),
+        fin({ trip_id: 'b', status: 'PLANNED', revenue: null, has_revenue: false, profit: null }),
+        fin({ trip_id: 'c', status: 'IN_PROGRESS', revenue: 9000, profit: 8600 }),
+        fin({ trip_id: 'd', status: 'CANCELLED', revenue: 9000, profit: 8600 }),
+      ],
+    });
+    expect(m.monthProfit).toEqual({ status: 'ok', value: 60000, excluded: 0 });
+    const onlyOpen = computeVehicleMetrics({
+      today: TODAY,
+      fuel: [],
+      service: [],
+      tripExpenses: [],
+      financials: [fin({ status: 'IN_PROGRESS' }), fin({ status: 'PLANNED', revenue: null, has_revenue: false })],
+    });
+    expect(onlyOpen.monthProfit.status).toBe('insufficient');
+  });
   it('maps reasons to dictionary keys', () => {
     expect(reasonKey('no distance')).toBe('noDistance');
     expect(reasonKey('no trips with revenue')).toBe('noRevenue');
+    expect(reasonKey('missing_odometer_in_span')).toBe('missingOdometer');
     expect(reasonKey('whatever')).toBe('generic');
   });
 });

@@ -7,7 +7,8 @@
 --   the temporary organizations 'ZZ Test A/B', their auth users and all rows. Read the PASS/FAIL
 --   lines from the error text. Expected: "RESULT (0 fail / N total)".
 --   Blocks re-create their own fixtures, so they can run in any order.
---   Last verified 2026-09-21: block 1 = 217 checks, block 2 = 128, block 3 = 139; 0 fails.
+--   Last verified 2026-09-21 (after 20260921000006): block 1 = 239 checks, block 2 = 105, block 3 = 139,
+--   block 4 (review fixes p-u) = 124; 0 fails.
 --   (Block 1's (e)-DELETE and (g)-anon table loops were afterwards changed to capture the table list as
 --   superuser first; the anon read loop was verified in block 2's earlier form, all 22 tables denied.)
 --
@@ -437,8 +438,8 @@ perform pg_temp.as_su();
 perform pg_temp.eq('o bucket documents is private', $q$select public::text from storage.buckets where id='documents'$q$, 'false');
 perform pg_temp.eq('o bucket size limit 10MB', $q$select file_size_limit::text from storage.buckets where id='documents'$q$, '10485760');
 perform pg_temp.eq('o bucket mime allow-list', $q$select array_to_string(array(select unnest(allowed_mime_types) order by 1),',') from storage.buckets where id='documents'$q$, 'application/pdf,image/jpeg,image/png,image/webp');
-perform pg_temp.eq('o 4 documents_* policies on storage.objects', $q$select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'documents\_%'$q$, '4');
-perform pg_temp.eq('o policies all reference org folder', $q$select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'documents\_%' and (coalesce(qual,'')||coalesce(with_check,'')) like '%current_org_id%' and (coalesce(qual,'')||coalesce(with_check,'')) like '%foldername%'$q$, '4');
+perform pg_temp.eq('o 5 documents_* policies on storage.objects', $q$select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'documents\_%'$q$, '5');
+perform pg_temp.eq('o policies all reference org folder', $q$select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'documents\_%' and (coalesce(qual,'')||coalesce(with_check,'')) like '%current_org_id%' and (coalesce(qual,'')||coalesce(with_check,'')) like '%foldername%'$q$, '5');
 perform pg_temp.exp('o (setup) objects', $q$insert into storage.objects(bucket_id,name) values ('documents',{oA}::text||'/z.pdf'),('documents',{oB}::text||'/y.pdf'),('documents','loose.pdf')$q$, 'ok');
 perform pg_temp.as_user('uAs');
 perform pg_temp.eq('o staff A sees only own-folder objects', $q$select count(*) from storage.objects where bucket_id='documents' and name not like {oA}::text||'/%'$q$, '0');
@@ -450,12 +451,184 @@ perform pg_temp.exp('o staff A cannot upload to other bucket', $q$insert into st
 perform pg_temp.exp('o staff A cannot update org B object', $q$update storage.objects set name={oB}::text||'/y2.pdf' where name={oB}::text||'/y.pdf'$q$, 'blocked');
 perform pg_temp.exp('o staff A cannot move own object into org B folder', $q$update storage.objects set name={oB}::text||'/moved.pdf' where name={oA}::text||'/z.pdf'$q$, 'err');
 perform set_config('storage.allow_delete_query','true',true);
-perform pg_temp.exp('o staff A cannot delete objects (admin only)', $q$delete from storage.objects where name={oA}::text||'/z.pdf'$q$, 'blocked');
+perform pg_temp.exp('o staff A cannot delete objects they did not upload (owner_id null here)', $q$delete from storage.objects where name={oA}::text||'/z.pdf'$q$, 'blocked');
 perform pg_temp.as_user('uAa');
 perform pg_temp.exp('o admin A cannot delete org B object', $q$delete from storage.objects where name={oB}::text||'/y.pdf'$q$, 'blocked');
 perform pg_temp.exp('o admin A can delete own-folder object', $q$delete from storage.objects where name={oA}::text||'/z.pdf'$q$, 'ok1');
 perform pg_temp.as_anon();
 perform pg_temp.eq('o anon sees no objects', 'select count(*) from storage.objects', '0');
 perform pg_temp.as_su();
+raise exception 'RESULT (% fail / % total): %', (select count(*) from pg_temp.res where line like 'FAIL%'), (select count(*) from pg_temp.res), E'\n'||coalesce((select string_agg(line, E'\n') filter (where line like 'FAIL%') from pg_temp.res),'')||E'\n--ALL--\n'||(select string_agg(line, E'\n') from pg_temp.res);
+end $b$;
+
+-- ======================================================================= BLOCK 4: (p)-(u) review fixes
+-- (run PART 0 first, then this block)
+do $b$
+begin
+-- (p) guard_row hardening
+perform pg_temp.as_user('uAa');
+perform pg_temp.exp('p admin void with CLIENT clock in the past', $q$update fuel_records set voided_at=timestamptz '2000-01-01', void_reason='r' where id={fA}$q$, 'ok1');
+perform pg_temp.eq('p voided_at forced to now()', $q$select (voided_at = now())::text from fuel_records where id={fA}$q$, 'true');
+perform pg_temp.chk('p re-void: change void_reason rejected (23514 already voided)', pg_temp.ex($q$update fuel_records set void_reason='changed' where id={fA}$q$) like 'ERR:23514:%already voided%');
+perform pg_temp.chk('p re-void: change voided_at rejected', pg_temp.ex($q$update fuel_records set voided_at=now()+interval '1 day' where id={fA}$q$) like 'ERR:23514:%already voided%');
+perform pg_temp.chk('p re-void: change voided_by rejected', pg_temp.ex($q$update fuel_records set voided_by={uAs} where id={fA}$q$) like 'ERR:23514:%already voided%');
+perform pg_temp.eq('p original void_reason intact', $q$select void_reason from fuel_records where id={fA}$q$, 'r');
+perform pg_temp.eq('p VOID audit logged once', $q$select count(*) from audit_logs where entity_type='fuel_records' and entity_id={fA} and action='VOID'$q$, '1');
+perform pg_temp.exp('p admin can still edit other fields of voided row', $q$update fuel_records set notes='n' where id={fA}$q$, 'ok1');
+perform pg_temp.as_user('uAs');
+perform pg_temp.exp('p staff cannot restore', $q$update fuel_records set voided_at=null where id={fA}$q$, 'blocked');
+perform pg_temp.as_user('uAa');
+perform pg_temp.exp('p admin restore (passing a stale void_reason)', $q$update fuel_records set voided_at=null, void_reason='keep' where id={fA}$q$, 'ok1');
+perform pg_temp.eq('p restore clears void_reason', $q$select coalesce(void_reason,'<null>') from fuel_records where id={fA}$q$, '<null>');
+perform pg_temp.eq('p restore clears voided_by', $q$select count(*) from fuel_records where id={fA} and voided_by is null and voided_at is null$q$, '1');
+perform pg_temp.eq('p RESTORE audit logged once', $q$select count(*) from audit_logs where entity_type='fuel_records' and entity_id={fA} and action='RESTORE'$q$, '1');
+perform pg_temp.exp('p re-void after restore ok', $q$update fuel_records set voided_at=now(), void_reason='again' where id={fA}$q$, 'ok1');
+perform pg_temp.eq('p VOID audit count now 2', $q$select count(*) from audit_logs where entity_type='fuel_records' and entity_id={fA} and action='VOID'$q$, '2');
+perform pg_temp.chk('p admin: void_reason on non-voided row rejected', pg_temp.ex($q$update trip_expenses set void_reason='x' where id={eA}$q$) like 'ERR:23514:%');
+perform pg_temp.as_user('uAs');
+perform pg_temp.chk('p staff: void_reason on non-voided row rejected', pg_temp.ex($q$update trip_expenses set void_reason='x' where id={eA}$q$) like 'ERR:23514:%');
+perform pg_temp.exp('p staff cannot void (still)', $q$update trip_expenses set voided_at=now(), void_reason='x' where id={eA}$q$, '42501');
+-- (q) one IN_PROGRESS trip per vehicle at index level
+perform pg_temp.as_su();
+perform pg_temp.eq('q index exists', $q$select count(*) from pg_indexes where indexname='trips_one_in_progress_per_vehicle' and indexdef like '%UNIQUE%' and indexdef like '%IN_PROGRESS%'$q$, '1');
+perform pg_temp.exp('q first IN_PROGRESS', $q$insert into trips(id,organization_id,vehicle_id,driver_id,trip_date,origin,destination,status) values ({x1},{oA},{vA4},{dA},current_date,'o','d','IN_PROGRESS')$q$, 'ok1');
+perform pg_temp.exp('q (setup) disable pre-check trigger to simulate a race', 'alter table public.trips disable trigger b_trip_before', 'ok');
+perform pg_temp.chk('q duplicate IN_PROGRESS rejected by the unique index (23505 + index name)', pg_temp.ex($q$insert into trips(organization_id,vehicle_id,driver_id,trip_date,origin,destination,status) values ({oA},{vA4},{dA},current_date,'o','d','IN_PROGRESS')$q$) like 'ERR:23505:%trips_one_in_progress_per_vehicle%');
+perform pg_temp.exp('q PLANNED on same vehicle fine', $q$insert into trips(id,organization_id,vehicle_id,driver_id,trip_date,origin,destination) values ({x2},{oA},{vA4},{dA},current_date,'o','d')$q$, 'ok1');
+perform pg_temp.chk('q PLANNED->IN_PROGRESS duplicate rejected by index', pg_temp.ex($q$update trips set status='IN_PROGRESS' where id={x2}$q$) like 'ERR:23505:%');
+perform pg_temp.exp('q COMPLETED on same vehicle fine', $q$update trips set status='COMPLETED' where id={x2}$q$, 'ok1');
+perform pg_temp.exp('q different vehicle IN_PROGRESS fine', $q$insert into trips(organization_id,vehicle_id,driver_id,trip_date,origin,destination,status) values ({oA},{vA5},{dA},current_date,'o','d','IN_PROGRESS')$q$, 'ok1');
+perform pg_temp.exp('q void the first', $q$update trips set voided_at=now(), void_reason='r' where id={x1}$q$, 'ok1');
+perform pg_temp.exp('q new IN_PROGRESS after voiding first is fine', $q$insert into trips(organization_id,vehicle_id,driver_id,trip_date,origin,destination,status) values ({oA},{vA4},{dA},current_date,'o','d','IN_PROGRESS')$q$, 'ok1');
+perform pg_temp.exp('q (teardown) re-enable trigger', 'alter table public.trips enable trigger b_trip_before', 'ok');
+-- (r) storage: staff delete own uploads only
+perform pg_temp.exp('r (setup) objects with owners', $q$insert into storage.objects(bucket_id,name,owner_id) values ('documents',{oA}::text||'/s1.pdf',{uAs}::text),('documents',{oA}::text||'/s2.pdf',{uAa}::text),('documents',{oB}::text||'/s3.pdf',{uBs}::text),('documents',{oB}::text||'/s4.pdf',{uAs}::text)$q$, 'ok');
+perform pg_temp.as_user('uAs');
+perform set_config('storage.allow_delete_query','true',true);
+perform pg_temp.exp('r staff deletes object they uploaded', $q$delete from storage.objects where name={oA}::text||'/s1.pdf'$q$, 'ok1');
+perform pg_temp.exp('r staff cannot delete colleague(admin) upload', $q$delete from storage.objects where name={oA}::text||'/s2.pdf'$q$, 'blocked');
+perform pg_temp.exp('r staff cannot delete org B object', $q$delete from storage.objects where name={oB}::text||'/s3.pdf'$q$, 'blocked');
+perform pg_temp.exp('r staff cannot delete org B object even if owner_id = self', $q$delete from storage.objects where name={oB}::text||'/s4.pdf'$q$, 'blocked');
+perform pg_temp.as_user('uBs');
+perform pg_temp.exp('r staff B deletes own', $q$delete from storage.objects where name={oB}::text||'/s3.pdf'$q$, 'ok1');
+perform pg_temp.as_user('uAa');
+perform pg_temp.exp('r admin can still delete colleague upload', $q$delete from storage.objects where name={oA}::text||'/s2.pdf'$q$, 'ok1');
+perform pg_temp.as_anon();
+perform pg_temp.exp('r anon cannot delete', $q$delete from storage.objects where bucket_id='documents'$q$, 'blocked');
+-- (s) superseded documents
+perform pg_temp.as_user('uAs');
+perform pg_temp.exp('s vdoc REN old (+10)', $q$insert into vehicle_documents(id,organization_id,vehicle_id,document_type,expires_on) values ({x3},{oA},{vA5},'REN',current_date+10)$q$, 'ok1');
+perform pg_temp.eq('s lone doc not superseded', $q$select superseded::text from v_vehicle_documents where id={x3}$q$, 'false');
+perform pg_temp.exp('s vdoc REN new (+400)', $q$insert into vehicle_documents(id,organization_id,vehicle_id,document_type,expires_on) values ({x4},{oA},{vA5},'REN',current_date+400)$q$, 'ok1');
+perform pg_temp.eq('s old is superseded', $q$select superseded::text from v_vehicle_documents where id={x3}$q$, 'true');
+perform pg_temp.eq('s new is not superseded', $q$select superseded::text from v_vehicle_documents where id={x4}$q$, 'false');
+perform pg_temp.eq('s status of superseded doc still computed', $q$select status from v_vehicle_documents where id={x3}$q$, 'EXPIRING_SOON');
+perform pg_temp.exp('s vdoc same type other vehicle (+400)', $q$insert into vehicle_documents(organization_id,vehicle_id,document_type,expires_on) values ({oA},{vA6},'REN',current_date+400)$q$, 'ok1');
+perform pg_temp.eq('s other vehicle does not supersede (still exactly one superseded on vA5)', $q$select count(*) from v_vehicle_documents where vehicle_id={vA5} and superseded$q$, '1');
+perform pg_temp.exp('s vdoc REN2 null expiry', $q$insert into vehicle_documents(id,organization_id,vehicle_id,document_type,expires_on) values ({x5},{oA},{vA5},'REN2',null)$q$, 'ok1');
+perform pg_temp.exp('s vdoc REN2 dated', $q$insert into vehicle_documents(id,organization_id,vehicle_id,document_type,expires_on) values ({x6},{oA},{vA5},'REN2',current_date+5)$q$, 'ok1');
+perform pg_temp.eq('s NULL expiry never superseded', $q$select superseded::text from v_vehicle_documents where id={x5}$q$, 'false');
+perform pg_temp.eq('s dated doc not superseded by NULL', $q$select superseded::text from v_vehicle_documents where id={x6}$q$, 'false');
+perform pg_temp.exp('s vdoc REN3 a', $q$insert into vehicle_documents(organization_id,vehicle_id,document_type,expires_on,notes) values ({oA},{vA5},'REN3',current_date+20,'a')$q$, 'ok1');
+perform pg_temp.exp('s vdoc REN3 b same date', $q$insert into vehicle_documents(organization_id,vehicle_id,document_type,expires_on,notes) values ({oA},{vA5},'REN3',current_date+20,'b')$q$, 'ok1');
+perform pg_temp.eq('s equal expiry: neither superseded (strict)', $q$select count(*) from v_vehicle_documents where document_type='REN3' and superseded$q$, '0');
+perform pg_temp.as_user('uAa');
+perform pg_temp.exp('s admin voids the newer REN doc', $q$update vehicle_documents set voided_at=now(), void_reason='r' where id={x4}$q$, 'ok1');
+perform pg_temp.eq('s voided newer no longer supersedes', $q$select superseded::text from v_vehicle_documents where id={x3}$q$, 'false');
+perform pg_temp.as_user('uAs');
+perform pg_temp.exp('s ddoc DREN old', $q$insert into driver_documents(id,organization_id,driver_id,document_type,expires_on) values ({x7},{oA},{dA},'DREN',current_date+10)$q$, 'ok1');
+perform pg_temp.exp('s ddoc DREN new', $q$insert into driver_documents(id,organization_id,driver_id,document_type,expires_on) values ({x8},{oA},{dA},'DREN',current_date+300)$q$, 'ok1');
+perform pg_temp.eq('s driver old superseded', $q$select superseded::text from v_driver_documents where id={x7}$q$, 'true');
+perform pg_temp.eq('s driver new not superseded', $q$select superseded::text from v_driver_documents where id={x8}$q$, 'false');
+perform pg_temp.eq('s foreign org rows invisible in views (security_invoker)', 'select count(*)::text from v_vehicle_documents where organization_id<>{oA}', '0');
+perform pg_temp.eq('s views keep security_invoker', $q$select count(*) from pg_class where relname in ('v_vehicle_documents','v_driver_documents') and 'security_invoker=true' = any(reloptions)$q$, '2');
+perform pg_temp.as_su();
+perform pg_temp.eq('s anon has no grant on views', $q$select count(*) from information_schema.role_table_grants where table_name in ('v_vehicle_documents','v_driver_documents') and grantee='anon'$q$, '0');
+-- (t) reminders: superseded ignored, auto-complete, reopen, sticky dismissed / user-completed
+perform pg_temp.exp('t generate run 1', 'select private.generate_reminders()', 'ok');
+perform pg_temp.eq('t vdA reminder pending', $q$select status from reminders where entity_id={vdA}$q$, 'PENDING');
+perform pg_temp.as_user('uAs');
+perform pg_temp.exp('t staff marks own deliveries READ', $q$update notification_deliveries set status='READ', read_at=now() where recipient_id={uAs}$q$, 'ok');
+perform pg_temp.exp('t staff renews doc INS (+400) on vA', $q$insert into vehicle_documents(id,organization_id,vehicle_id,document_type,expires_on) values ({x9},{oA},{vA},'INS',current_date+400)$q$, 'ok1');
+perform pg_temp.as_su();
+perform pg_temp.exp('t generate after renewal', 'select private.generate_reminders()', 'ok');
+perform pg_temp.eq('t superseded doc reminder auto-COMPLETED', $q$select status from reminders where entity_id={vdA}$q$, 'COMPLETED');
+perform pg_temp.eq('t ... flagged auto_completed', $q$select auto_completed::text from reminders where entity_id={vdA}$q$, 'true');
+perform pg_temp.eq('t renewal doc gets no reminder', $q$select count(*) from reminders where entity_id={x9}$q$, '0');
+perform pg_temp.as_user('uAa');
+perform pg_temp.exp('t admin voids the renewal', $q$update vehicle_documents set voided_at=now(), void_reason='wrong doc' where id={x9}$q$, 'ok1');
+perform pg_temp.as_su();
+perform pg_temp.exp('t generate after renewal voided', 'select private.generate_reminders()', 'ok');
+perform pg_temp.eq('t auto-completed reminder REOPENED', $q$select status from reminders where entity_id={vdA}$q$, 'PENDING');
+perform pg_temp.eq('t reopened: completed_at cleared, auto_completed false', $q$select count(*) from reminders where entity_id={vdA} and completed_at is null and not auto_completed$q$, '1');
+perform pg_temp.eq('t reopened: still one reminder row', $q$select count(*) from reminders where entity_id={vdA}$q$, '1');
+perform pg_temp.eq('t reopened: in_app deliveries reset to SENT / read_at null', $q$select count(*) from notification_deliveries d join reminders r on r.id=d.reminder_id where r.entity_id={vdA} and d.channel='in_app' and d.status='SENT' and d.read_at is null$q$, '2');
+perform pg_temp.eq('t reopened: no non-reset in_app deliveries', $q$select count(*) from notification_deliveries d join reminders r on r.id=d.reminder_id where r.entity_id={vdA} and (d.status<>'SENT' or d.read_at is not null)$q$, '0');
+-- dismissed stays sticky through supersede + un-supersede
+perform pg_temp.as_user('uAs');
+perform pg_temp.exp('t staff dismisses the reminder', $q$update reminders set status='DISMISSED', dismissed_at=now() where entity_id={vdA}$q$, 'ok1');
+perform pg_temp.exp('t staff renews again', $q$insert into vehicle_documents(id,organization_id,vehicle_id,document_type,expires_on) values ({x1},{oA},{vA},'INS',current_date+500)$q$, 'ok1');
+perform pg_temp.as_su();
+perform pg_temp.exp('t generate (superseded again)', 'select private.generate_reminders()', 'ok');
+perform pg_temp.eq('t DISMISSED stays DISMISSED while superseded', $q$select status from reminders where entity_id={vdA}$q$, 'DISMISSED');
+perform pg_temp.as_user('uAa');
+perform pg_temp.exp('t admin voids that renewal', $q$update vehicle_documents set voided_at=now(), void_reason='r2' where id={x1}$q$, 'ok1');
+perform pg_temp.as_su();
+perform pg_temp.exp('t generate (condition returns)', 'select private.generate_reminders()', 'ok');
+perform pg_temp.eq('t DISMISSED not reopened', $q$select status from reminders where entity_id={vdA}$q$, 'DISMISSED');
+perform pg_temp.eq('t no duplicate for dismissed condition', $q$select count(*) from reminders where entity_id={vdA}$q$, '1');
+-- user-completed stays sticky
+perform pg_temp.as_user('uBs');
+perform pg_temp.exp('t staff B completes reminder', $q$update reminders set status='COMPLETED', completed_at=now() where entity_id={vdB}$q$, 'ok1');
+perform pg_temp.as_su();
+perform pg_temp.eq('t user-completed has auto_completed false', $q$select auto_completed::text from reminders where entity_id={vdB}$q$, 'false');
+perform pg_temp.exp('t generate (condition still holds)', 'select private.generate_reminders()', 'ok');
+perform pg_temp.eq('t user-COMPLETED not reopened (condition holds)', $q$select status from reminders where entity_id={vdB}$q$, 'COMPLETED');
+perform pg_temp.exp('t condition disappears', $q$update vehicle_documents set expires_on=current_date+90 where id={vdB}$q$, 'ok1');
+perform pg_temp.exp('t generate (gone)', 'select private.generate_reminders()', 'ok');
+perform pg_temp.exp('t condition returns (same date/key)', $q$update vehicle_documents set expires_on=current_date+10 where id={vdB}$q$, 'ok1');
+perform pg_temp.exp('t generate (back)', 'select private.generate_reminders()', 'ok');
+perform pg_temp.eq('t user-COMPLETED still not reopened after gap', $q$select status from reminders where entity_id={vdB}$q$, 'COMPLETED');
+perform pg_temp.eq('t user-completed: auto_completed still false', $q$select auto_completed::text from reminders where entity_id={vdB}$q$, 'false');
+-- auto_completed is not user-updatable
+perform pg_temp.as_user('uAs');
+perform pg_temp.exp('t staff cannot update reminders.auto_completed', $q$update reminders set auto_completed=true where entity_id={vdA}$q$, '42501');
+perform pg_temp.as_user('uAa');
+perform pg_temp.exp('t admin cannot update reminders.auto_completed', $q$update reminders set auto_completed=false where entity_id={vdA}$q$, '42501');
+perform pg_temp.as_su();
+perform pg_temp.eq('t no user-updatable grant on auto_completed', $q$select count(*) from information_schema.column_privileges where table_name='reminders' and column_name='auto_completed' and grantee in ('authenticated','anon','public') and privilege_type='UPDATE'$q$, '0');
+-- (u) create_trip_with_revenue
+perform pg_temp.exp('u (setup) profile-less user', $q$insert into auth.users(id,aud,role,email) values ({x1},'authenticated','authenticated','zz-x1@test.invalid')$q$, 'ok1');
+perform pg_temp.as_user('uAs');
+perform pg_temp.exp('u rpc with revenue', $q$select public.create_trip_with_revenue({vA},{dA},current_date,'o','d','PLANNED','rpc1',1500,'freight')$q$, 'ok');
+perform pg_temp.eq('u trip created (created_by = caller, org = caller org)', $q$select count(*) from trips where notes='rpc1' and created_by={uAs} and organization_id={oA} and status='PLANNED'$q$, '1');
+perform pg_temp.eq('u revenue created with amount/date/description/created_by', $q$select count(*) from trip_revenue r join trips t on t.id=r.trip_id where t.notes='rpc1' and r.amount=1500 and r.revenue_date=t.trip_date and r.description='freight' and r.created_by={uAs} and r.organization_id={oA}$q$, '1');
+perform pg_temp.exp('u rpc without revenue (null)', $q$select public.create_trip_with_revenue({vA},{dA},current_date,'o','d',null,'rpc2',null,null)$q$, 'ok');
+perform pg_temp.eq('u null revenue: trip (default PLANNED), no revenue row', $q$select count(*) from trips t where notes='rpc2' and status='PLANNED' and not exists (select 1 from trip_revenue r where r.trip_id=t.id)$q$, '1');
+perform pg_temp.exp('u rpc revenue 0', $q$select public.create_trip_with_revenue({vA},{dA},current_date,'o','d','PLANNED','rpc3',0,null)$q$, 'ok');
+perform pg_temp.exp('u rpc revenue negative (skipped by design)', $q$select public.create_trip_with_revenue({vA},{dA},current_date,'o','d','PLANNED','rpc4',-5,null)$q$, 'ok');
+perform pg_temp.eq('u zero/negative revenue: trips exist, no revenue rows', $q$select count(*) from trips t where notes in ('rpc3','rpc4') and not exists (select 1 from trip_revenue r where r.trip_id=t.id)$q$, '2');
+perform pg_temp.chk('u revenue insert FAILS (numeric overflow) -> error', pg_temp.ex($q$select public.create_trip_with_revenue({vA},{dA},current_date,'o','d','PLANNED','rpc-fail',99999999999999999,null)$q$) like 'ERR:22003%');
+perform pg_temp.eq('u ... and NO trip remains (atomic)', $q$select count(*) from trips where notes='rpc-fail'$q$, '0');
+perform pg_temp.eq('u ... and no orphan revenue', $q$select count(*) from trip_revenue where amount > 1000000$q$, '0');
+perform pg_temp.chk('u vehicle of another org rejected (23503)', pg_temp.ex($q$select public.create_trip_with_revenue({vB},{dA},current_date,'o','d','PLANNED','rpc-x1',10,null)$q$) like 'ERR:23503%');
+perform pg_temp.chk('u driver of another org rejected (23503)', pg_temp.ex($q$select public.create_trip_with_revenue({vA},{dB},current_date,'o','d','PLANNED','rpc-x2',10,null)$q$) like 'ERR:23503%');
+perform pg_temp.eq('u no trip for rejected calls', $q$select count(*) from trips where notes in ('rpc-x1','rpc-x2')$q$, '0');
+perform pg_temp.exp('u triggers apply: IN_PROGRESS on MAINTENANCE vehicle fails', $q$select public.create_trip_with_revenue({vA2},{dA},current_date,'o','d','IN_PROGRESS','rpc-m',10,null)$q$, '23514');
+perform pg_temp.eq('u ... no trip left', $q$select count(*) from trips where notes='rpc-m'$q$, '0');
+perform pg_temp.exp('u inactive driver rejected (trigger)', $q$select public.create_trip_with_revenue({vA},{dA2},current_date,'o','d','PLANNED','rpc-i',10,null)$q$, '23514');
+perform pg_temp.exp('u IN_PROGRESS via rpc on free vehicle', $q$select public.create_trip_with_revenue({vA6},{dA},current_date,'o','d','IN_PROGRESS','rpc5',200,null)$q$, 'ok');
+perform pg_temp.eq('u vehicle ON_TRIP after rpc', $q$select status from vehicles where id={vA6}$q$, 'ON_TRIP');
+perform pg_temp.exp('u second IN_PROGRESS via rpc on same vehicle fails', $q$select public.create_trip_with_revenue({vA6},{dA},current_date,'o','d','IN_PROGRESS','rpc6',200,null)$q$, 'err');
+perform pg_temp.eq('u ... nothing persisted', $q$select count(*) from trips where notes='rpc6'$q$, '0');
+perform pg_temp.as_user('uBs');
+perform pg_temp.chk('u staff B cannot use org A vehicle', pg_temp.ex($q$select public.create_trip_with_revenue({vA},{dB},current_date,'o','d','PLANNED','rpc-b',10,null)$q$) like 'ERR:23503%');
+perform pg_temp.as_user('x1');
+perform pg_temp.exp('u profile-less user rejected (42501)', $q$select public.create_trip_with_revenue({vA},{dA},current_date,'o','d','PLANNED','rpc-n',10,null)$q$, '42501');
+perform pg_temp.as_anon();
+perform pg_temp.exp('u anon cannot execute rpc', $q$select public.create_trip_with_revenue({vA},{dA},current_date,'o','d','PLANNED','rpc-a',10,null)$q$, '42501');
+perform pg_temp.as_su();
+perform pg_temp.eq('u function is SECURITY INVOKER with empty search_path', $q$select count(*) from pg_proc where proname='create_trip_with_revenue' and not prosecdef and 'search_path=""' = any(proconfig)$q$, '1');
+perform pg_temp.eq('u audit row written for rpc trip (as caller)', $q$select count(*) from audit_logs a join trips t on t.id=a.entity_id where a.entity_type='trips' and a.action='INSERT' and t.notes='rpc1' and a.actor_id={uAs}$q$, '1');
 raise exception 'RESULT (% fail / % total): %', (select count(*) from pg_temp.res where line like 'FAIL%'), (select count(*) from pg_temp.res), E'\n'||coalesce((select string_agg(line, E'\n') filter (where line like 'FAIL%') from pg_temp.res),'')||E'\n--ALL--\n'||(select string_agg(line, E'\n') from pg_temp.res);
 end $b$;

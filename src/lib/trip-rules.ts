@@ -58,6 +58,25 @@ export function isOdometerJump(
   return entered - current > maxJump;
 }
 
+/** True when the entered odometer is more than `maxDrop` km BELOW the known current value (likely typo). */
+export function isOdometerDrop(
+  entered: number | null | undefined,
+  current: number | null | undefined,
+  maxDrop = 5000,
+): boolean {
+  if (entered == null || current == null) return false;
+  if (!Number.isFinite(entered) || !Number.isFinite(current)) return false;
+  return current - entered > maxDrop;
+}
+
+/** Odometer reading that needs an explicit confirmation: a big jump forward or a big drop. */
+export function isOdometerSuspicious(
+  entered: number | null | undefined,
+  current: number | null | undefined,
+): boolean {
+  return isOdometerJump(entered, current) || isOdometerDrop(entered, current);
+}
+
 /** 'YYYY-MM-DDTHH:mm' (Addis wall clock, +03:00) -> ISO UTC string, or null if invalid. */
 export function addisLocalToIso(local: string): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local.trim());

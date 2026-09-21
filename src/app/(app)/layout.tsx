@@ -14,7 +14,7 @@ async function unreadCount(userId: string): Promise<number> {
       .from('v_notifications')
       .select('delivery_id', { count: 'exact', head: true })
       .eq('recipient_id', userId)
-      .eq('reminder_status', 'PENDING')
+      .in('reminder_status', ['PENDING', 'SCHEDULED'])
       .neq('delivery_status', 'READ');
     return error ? 0 : (count ?? 0);
   } catch {

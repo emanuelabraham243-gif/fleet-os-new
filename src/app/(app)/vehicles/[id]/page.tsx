@@ -17,14 +17,28 @@ import {
   type ServiceRow,
   type TripExpenseRow,
 } from '@/lib/vehicle-file';
-import { Badge, Card, EmptyState, LinkButton, Metric, PageHeader, Section, StatusBadge } from '@/components/ui';
+import { Badge, Card, EmptyState, Flash, LinkButton, Metric, PageHeader, Section, StatusBadge } from '@/components/ui';
 import { row, rows } from '@/components/home/query';
 
-type DocRow = { id: string; document_type: string; expires_on: string | null; status: string };
+type DocRow = {
+  id: string;
+  document_type: string;
+  expires_on: string | null;
+  status: string;
+  superseded?: boolean | null;
+};
+type SP = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function VehicleFilePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function VehicleFilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: SP;
+}) {
   await requireViewer();
   const { id } = await params;
+  const sp = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
 
   const i18n = await getI18n();
@@ -34,7 +48,7 @@ export default async function VehicleFilePage({ params }: { params: Promise<{ id
   const from = windowFrom(today);
   const monthFrom = monthStart(today);
 
-  const [vehicleR, driversR, openTripR, recentTripsR, monthTripsR, fuelWinR, fuelRecentR, svcWinR, svcRecentR, expR, vdocsR, incR] =
+  const [vehicleR, driversR, openTripR, recentTripsR, monthTripsR, fuelWinR, fuelRecentR, svcWinR, svcRecentR, eligibleR, vdocsR, incR] =
     await Promise.all([
       supabase
         .from('vehicles')
@@ -88,15 +102,18 @@ export default async function VehicleFilePage({ params }: { params: Promise<{ id
         .is('voided_at', null)
         .order('service_date', { ascending: false })
         .limit(15),
+      // Trips whose expenses count toward cost per km: not voided, not cancelled.
       supabase
-        .from('trip_expenses')
-        .select('amount, expense_date')
+        .from('trips')
+        .select('id')
         .eq('vehicle_id', id)
         .is('voided_at', null)
-        .gte('expense_date', from),
+        .neq('status', 'CANCELLED')
+        .order('trip_date', { ascending: false })
+        .limit(150),
       supabase
         .from('v_vehicle_documents')
-        .select('id, document_type, expires_on, status')
+        .select('id, document_type, expires_on, status, superseded')
         .eq('vehicle_id', id)
         .order('expires_on', { ascending: true, nullsFirst: false }),
       supabase
@@ -129,7 +146,7 @@ export default async function VehicleFilePage({ params }: { params: Promise<{ id
   const monthTrips = rows<Fin>(monthTripsR);
   const fuel = dedupe(rows<FuelRow & { id: string }>(fuelWinR), rows<FuelRow & { id: string }>(fuelRecentR));
   const service = dedupe(rows<ServiceRow & { id: string }>(svcWinR), rows<ServiceRow & { id: string }>(svcRecentR));
-  const expenses = rows<TripExpenseRow>(expR);
+  const eligibleTripIds = rows<{ id: string }>(eligibleR).map((x) => x.id);
   const vdocs = rows<DocRow>(vdocsR);
   const incidents = rows<{ id: string; title: string; status: string; occurred_at: string }>(incR);
 
@@ -137,17 +154,28 @@ export default async function VehicleFilePage({ params }: { params: Promise<{ id
   const currentDriverId = openTrip?.driver_id;
   const docDriverId = currentDriverId ?? recentTrips[0]?.driver_id;
   const docDriverName = docDriverId ? drivers.get(docDriverId) : undefined;
-  const ddocs = docDriverId
-    ? rows<DocRow>(
-        await supabase
+  const [expR, ddocsR] = await Promise.all([
+    eligibleTripIds.length
+      ? supabase
+          .from('trip_expenses')
+          .select('trip_id, category, amount, expense_date')
+          .eq('vehicle_id', id)
+          .in('trip_id', eligibleTripIds)
+          .is('voided_at', null)
+          .gte('expense_date', from)
+      : Promise.resolve({ data: [], error: null }),
+    docDriverId
+      ? supabase
           .from('v_driver_documents')
-          .select('id, document_type, expires_on, status')
+          .select('id, document_type, expires_on, status, superseded')
           .eq('driver_id', docDriverId)
-          .order('expires_on', { ascending: true, nullsFirst: false }),
-      )
-    : [];
+          .order('expires_on', { ascending: true, nullsFirst: false })
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const expenses = rows<TripExpenseRow>(expR);
+  const ddocs = rows<DocRow>(ddocsR);
 
-  const metrics = computeVehicleMetrics({ today, fuel, service, tripExpenses: expenses, financials: monthTrips });
+  const metrics = computeVehicleMetrics({ today, fuel, service, tripExpenses: expenses, financials: monthTrips, eligibleTripIds });
   const history = mergeHistory({ fuel, service, trips: recentTrips });
   const odo = vehicle.current_odometer == null ? null : Number(vehicle.current_odometer);
   const makeModel = [vehicle.make, vehicle.model, vehicle.year].filter((x) => x != null && x !== '').join(' ');
@@ -159,6 +187,7 @@ export default async function VehicleFilePage({ params }: { params: Promise<{ id
       <Link href="/vehicles" className="mb-2 inline-flex min-h-12 items-center text-base font-semibold text-brand-ink">
         {t('vehicles.backToList')}
       </Link>
+      <Flash saved={sp.saved} error={sp.error} warn={sp.warn} />
       <PageHeader
         title={vehicle.name}
         subtitle={[vehicle.plate_number, makeModel].filter(Boolean).join(' · ')}
@@ -181,13 +210,19 @@ export default async function VehicleFilePage({ params }: { params: Promise<{ id
           title={`${t('vehicles.costPerKm')} (${t('vehicles.metricsTitle')})`}
           metric={metrics.costPerKm}
           format={(v) => t('vehicles.costPerKmValue', { amount: formatEtb(Math.round(v), locale) })}
-          okHint={t('vehicles.costPerKmHint')}
+          okHint={
+            t('vehicles.costPerKmHint') +
+            (metrics.costPerKm.status === 'ok' && (metrics.costPerKm.excluded ?? 0) > 0
+              ? ' ' + t('vehicles.excludedServices', { n: metrics.costPerKm.excluded ?? 0 })
+              : '')
+          }
         />
         <MetricCard
           i18n={i18n}
           title={`${t('vehicles.fuelEfficiency')} (${t('vehicles.metricsTitle')})`}
           metric={metrics.fuelEfficiency}
           format={(v) => t('vehicles.kmPerL', { n: formatNumber(v, locale, 1) })}
+          okHint={t('vehicles.fuelEfficiencyHint')}
         />
         <MetricCard
           i18n={i18n}
@@ -358,19 +393,27 @@ function MetricCard({
 
 function DocList({ i18n, title, docs }: { i18n: I18n; title: string; docs: DocRow[] }) {
   const { t, label, locale } = i18n;
+  // Replaced documents never drive status emphasis: they are listed last and muted.
+  const ordered = [...docs.filter((d) => !d.superseded), ...docs.filter((d) => d.superseded)];
   return (
     <div className="mb-4">
       <h3 className="mb-2 text-base font-semibold text-muted">{title}</h3>
-      {docs.length === 0 ? (
+      {ordered.length === 0 ? (
         <EmptyState title={t('vehicles.noDocs')} />
       ) : (
         <ul className="space-y-2">
-          {docs.map((d) => (
+          {ordered.map((d) => (
             <li key={d.id}>
-              <Card>
+              <Card className={d.superseded ? 'bg-muted-soft' : ''}>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="min-w-0 text-base font-semibold">{label('documentType', d.document_type)}</p>
-                  <StatusBadge group="docStatus" code={d.status} />
+                  <p className={`min-w-0 text-base font-semibold ${d.superseded ? 'text-muted' : ''}`}>
+                    {label('documentType', d.document_type)}
+                  </p>
+                  {d.superseded ? (
+                    <Badge tone="gray">{t('vehicles.replacedBadge')}</Badge>
+                  ) : (
+                    <StatusBadge group="docStatus" code={d.status} />
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-muted">
                   {d.expires_on ? t('vehicles.expires', { date: formatDate(d.expires_on, locale) }) : t('vehicles.noExpiry')}

@@ -3,6 +3,7 @@ import { getI18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { todayAddis } from '@/lib/format';
 import { Card, EmptyState, PageHeader } from '@/components/ui';
+import { rows } from '@/components/home/query';
 import { TripForm } from '../../trips/trip-form';
 
 export default async function NewTripPage() {
@@ -19,11 +20,11 @@ export default async function NewTripPage() {
     supabase.from('drivers').select('id, name').eq('status', 'ACTIVE').order('name'),
   ]);
 
-  const vehicles = (vRes.data ?? []).map((v) => ({
-    value: v.id as string,
-    label: `${v.name} · ${v.plate_number} (${label('vehicleStatus', v.status as string)})`,
+  const vehicles = rows<{ id: string; name: string; plate_number: string; status: string }>(vRes).map((v) => ({
+    value: v.id,
+    label: `${v.name} · ${v.plate_number} (${label('vehicleStatus', v.status)})`,
   }));
-  const drivers = (dRes.data ?? []).map((d) => ({ value: d.id as string, label: d.name as string }));
+  const drivers = rows<{ id: string; name: string }>(dRes).map((d) => ({ value: d.id, label: d.name }));
 
   return (
     <div>

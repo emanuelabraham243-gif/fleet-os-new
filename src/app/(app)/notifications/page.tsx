@@ -19,6 +19,8 @@ type Notification = {
   created_at: string;
 };
 
+const EARLIER_LIMIT = 50;
+
 const btn =
   'inline-flex min-h-12 min-w-24 flex-1 items-center justify-center rounded-xl px-4 text-base font-semibold leading-snug';
 
@@ -33,23 +35,34 @@ export default async function NotificationsPage({
   const { t } = i18n;
   const supabase = await createClient();
 
-  const res = await supabase
-    .from('v_notifications')
-    .select('delivery_id, delivery_status, reminder_id, type, params, due_on, priority, reminder_status, created_at')
-    .eq('recipient_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(100);
-  const all = rows<Notification>(res);
-
-  const pending = all.filter((n) => n.reminder_status === 'PENDING' || n.reminder_status === 'SCHEDULED');
-  const earlier = all.filter((n) => n.reminder_status !== 'PENDING' && n.reminder_status !== 'SCHEDULED');
+  const cols =
+    'delivery_id, delivery_status, reminder_id, type, params, due_on, priority, reminder_status, created_at';
+  // Open reminders are queried on their own with no limit so newer resolved rows never push them out.
+  const [pendingR, earlierR] = await Promise.all([
+    supabase
+      .from('v_notifications')
+      .select(cols)
+      .eq('recipient_id', user.id)
+      .in('reminder_status', ['PENDING', 'SCHEDULED'])
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('v_notifications')
+      .select(cols)
+      .eq('recipient_id', user.id)
+      .not('reminder_status', 'in', '(PENDING,SCHEDULED)')
+      .order('created_at', { ascending: false })
+      .limit(EARLIER_LIMIT),
+  ]);
+  const pending = rows<Notification>(pendingR);
+  const earlier = rows<Notification>(earlierR);
+  const total = pending.length + earlier.length;
 
   return (
     <div>
       <PageHeader title={t('notifications.title')} />
       <Flash saved={sp.saved} error={sp.error} />
 
-      {all.length === 0 ? (
+      {total === 0 ? (
         <EmptyState title={t('notifications.empty')} hint={t('notifications.emptyHint')} />
       ) : (
         <>
@@ -79,6 +92,9 @@ export default async function NotificationsPage({
                   </li>
                 ))}
               </ul>
+              {earlier.length >= EARLIER_LIMIT ? (
+                <p className="px-4 pb-3 text-sm text-muted">{t('notifications.earlierNote', { n: EARLIER_LIMIT })}</p>
+              ) : null}
             </details>
           ) : null}
         </>
@@ -104,7 +120,7 @@ function NotificationCard({ n, i18n, actions = false }: { n: Notification; i18n:
           </Badge>
         ) : (
           <Badge tone="gray">
-            {n.reminder_status === 'DISMISSED' ? t('notifications.statusDismissed') : t('notifications.statusCompleted')}
+            {n.reminder_status === 'DISMISSED' ? t('notifications.statusDismissed') : t('notifications.statusResolved')}
           </Badge>
         )}
       </div>

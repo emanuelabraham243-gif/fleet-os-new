@@ -6,7 +6,9 @@ import {
   canTransition,
   centsToDecimal,
   expenseDuplicateKey,
+  isOdometerDrop,
   isOdometerJump,
+  isOdometerSuspicious,
   isoToAddisLocal,
   tripDuplicateKey,
 } from './trip-rules';
@@ -73,5 +75,22 @@ describe('fuel total', () => {
     expect(calcTotalCents('', '5')).toBeNull();
     expect(centsToDecimal(342000)).toBe('3420.00');
     expect(centsToDecimal(5)).toBe('0.05');
+  });
+});
+
+describe('odometer plausibility', () => {
+  it('flags a drop of more than 5000 km only', () => {
+    expect(isOdometerDrop(90000, 100000)).toBe(true);
+    expect(isOdometerDrop(95000, 100000)).toBe(false);
+    expect(isOdometerDrop(94999, 100000)).toBe(true);
+    expect(isOdometerDrop(100500, 100000)).toBe(false);
+    expect(isOdometerDrop(null, 100000)).toBe(false);
+    expect(isOdometerDrop(10, null)).toBe(false);
+  });
+  it('suspicious covers both forward jumps and drops', () => {
+    expect(isOdometerSuspicious(103000, 100000)).toBe(true);
+    expect(isOdometerSuspicious(80000, 100000)).toBe(true);
+    expect(isOdometerSuspicious(100100, 100000)).toBe(false);
+    expect(isOdometerSuspicious(99000, 100000)).toBe(false);
   });
 });

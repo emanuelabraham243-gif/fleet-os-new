@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { getI18n } from '@/lib/i18n';
+import { ChipLink } from '@/components/chip-link';
 
 export type Tone = 'green' | 'amber' | 'red' | 'gray' | 'blue';
 
@@ -148,9 +149,9 @@ export function Chips({ items }: { items: { href: string; label: string; active:
       <ul className="flex w-max gap-2">
         {items.map((it) => (
           <li key={it.href}>
-            <Link
+            <ChipLink
               href={it.href}
-              aria-current={it.active ? 'true' : undefined}
+              active={it.active}
               className={`inline-flex min-h-12 items-center rounded-full border px-4 text-base leading-snug ${
                 it.active
                   ? 'border-brand bg-brand font-semibold text-on-brand'
@@ -159,7 +160,7 @@ export function Chips({ items }: { items: { href: string; label: string; active:
             >
               {it.active ? <span aria-hidden="true">✓&nbsp;</span> : null}
               {it.label}
-            </Link>
+            </ChipLink>
           </li>
         ))}
       </ul>
@@ -167,17 +168,38 @@ export function Chips({ items }: { items: { href: string; label: string; active:
   );
 }
 
-export async function Flash({ saved, error }: { saved?: string | string[]; error?: string | string[] }) {
+const WARN_KEYS: Record<string, string> = {
+  mismatch: 'fuel.warnMismatch',
+  badTransition: 'trips.warnBadTransition',
+  revenueFailed: 'trips.warnRevenueFailed',
+};
+
+export async function Flash({
+  saved,
+  error,
+  warn,
+}: {
+  saved?: string | string[];
+  error?: string | string[];
+  warn?: string | string[];
+}) {
   const { t, dict } = await getI18n();
   const s = Array.isArray(saved) ? saved[0] : saved;
   const e = Array.isArray(error) ? error[0] : error;
-  if (!s && !e) return null;
+  const w = Array.isArray(warn) ? warn[0] : warn;
+  const warnKey = w && Object.hasOwn(WARN_KEYS, w) ? WARN_KEYS[w] : undefined;
+  if (!s && !e && !warnKey) return null;
   const errors = dict.errors as Record<string, unknown>;
   return (
     <div aria-live="polite" className="mb-4 space-y-2">
       {s ? (
         <p role="status" className="rounded-xl bg-ok-soft px-4 py-3 text-base font-medium text-ok-ink">
           {t('common.saved')}
+        </p>
+      ) : null}
+      {warnKey ? (
+        <p role="status" className="rounded-xl bg-warn-soft px-4 py-3 text-base font-medium text-warn-ink">
+          {t(warnKey)}
         </p>
       ) : null}
       {e ? (

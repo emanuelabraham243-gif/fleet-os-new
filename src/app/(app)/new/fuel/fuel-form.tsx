@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useI18n } from '@/lib/i18n-client';
 import {
   ConfirmSaveButton,
@@ -31,19 +31,20 @@ export function FuelForm({
   const [price, setPrice] = useState(state.values?.unit_price ?? '');
   const [total, setTotal] = useState(state.values?.total_amount ?? '');
 
+  const formRef = useRef<HTMLFormElement>(null);
   const calc = calcTotalCents(qty, price);
   const showCalc = calc != null && total.trim() === '';
 
   function useCalculated() {
     if (calc == null) return;
     const v = centsToDecimal(calc);
-    const el = document.getElementById('f-total_amount') as HTMLInputElement | null;
-    if (el) el.value = v;
+    const el = formRef.current?.elements.namedItem('total_amount');
+    if (el instanceof HTMLInputElement) el.value = v;
     setTotal(v);
   }
 
   return (
-    <form action={formAction} noValidate>
+    <form ref={formRef} action={formAction} noValidate>
       <FormMessage state={state} />
       <SelectField
         name="vehicle_id"

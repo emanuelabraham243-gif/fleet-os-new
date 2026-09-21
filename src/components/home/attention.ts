@@ -12,8 +12,8 @@ export type AttentionInput = {
   today: string;
   vehicles: Map<string, Named>;
   drivers: Map<string, { id: string; name: string; status: string; license_expiry: string | null }>;
-  vehicleDocs: { id: string; vehicle_id: string; document_type: string; expires_on: string | null }[];
-  driverDocs: { id: string; driver_id: string; document_type: string; expires_on: string | null }[];
+  vehicleDocs: { id: string; vehicle_id: string; document_type: string; expires_on: string | null; superseded?: boolean | null }[];
+  driverDocs: { id: string; driver_id: string; document_type: string; expires_on: string | null; superseded?: boolean | null }[];
   maintenance: { id: string; vehicle_id: string; service_category: string }[];
   incidents: { id: string; vehicle_id: string; title: string }[];
   reminders: { id: string; type: string; params: unknown; entity_id: string }[];
@@ -40,7 +40,7 @@ export function buildAttention(i18n: I18n, input: AttentionInput): AttentionItem
   };
 
   for (const d of input.vehicleDocs) {
-    if (!soon(d.expires_on)) continue;
+    if (d.superseded === true || !soon(d.expires_on)) continue;
     const expired = docStatus(d.expires_on, input.today) === 'EXPIRED';
     items.push({
       key: 'vdoc:' + d.id,
@@ -54,7 +54,7 @@ export function buildAttention(i18n: I18n, input: AttentionInput): AttentionItem
     });
   }
   for (const d of input.driverDocs) {
-    if (!soon(d.expires_on)) continue;
+    if (d.superseded === true || !soon(d.expires_on)) continue;
     const expired = docStatus(d.expires_on, input.today) === 'EXPIRED';
     items.push({
       key: 'ddoc:' + d.id,

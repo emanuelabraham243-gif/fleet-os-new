@@ -5,7 +5,13 @@ export type Metric =
   | { status: 'ok'; value: number; excluded?: number }
   | { status: 'insufficient'; reason: string };
 
-/** Km per liter using the full-tank method. */
+/**
+ * Km per liter using the full-tank method: distance between the first and last odometer
+ * fill divided by the litres of every later fill. Assumes each fill is a full tank
+ * (partial fills are a known limitation). If any fill dated between the first and last
+ * odometer fill has no odometer, its litres cannot be matched to distance, so the
+ * result is insufficient rather than guessed.
+ */
 export function fuelEfficiency(
   records: { date: string; quantity: number; odometer: number | null }[],
 ): Metric {
@@ -13,8 +19,13 @@ export function fuelEfficiency(
     .filter((r): r is { date: string; quantity: number; odometer: number } => r.odometer != null)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.odometer - b.odometer));
   if (pts.length < 2) return { status: 'insufficient', reason: 'fewer than 2 fuel records with odometer' };
-  const distance = pts[pts.length - 1].odometer - pts[0].odometer;
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  const distance = last.odometer - first.odometer;
   if (distance <= 0) return { status: 'insufficient', reason: 'no distance between readings' };
+  if (records.some((r) => r.odometer == null && r.date >= first.date && r.date <= last.date)) {
+    return { status: 'insufficient', reason: 'missing_odometer_in_span' };
+  }
   const liters = pts.slice(1).reduce((s, r) => s + r.quantity, 0);
   if (liters <= 0) return { status: 'insufficient', reason: 'no fuel quantity' };
   return { status: 'ok', value: distance / liters };
@@ -27,10 +38,11 @@ export function odometerSpan(readings: (number | null)[]): number | null {
 }
 
 /** Value is cents per km (float). */
-export function costPerKm(costCents: number, distanceKm: number | null): Metric {
+export function costPerKm(costCents: number, distanceKm: number | null, excluded = 0): Metric {
   if (distanceKm == null || distanceKm <= 0) return { status: 'insufficient', reason: 'no distance' };
   if (costCents <= 0) return { status: 'insufficient', reason: 'no cost' };
-  return { status: 'ok', value: costCents / distanceKm };
+  const value = costCents / distanceKm;
+  return excluded > 0 ? { status: 'ok', value, excluded } : { status: 'ok', value };
 }
 
 export function tripProfitCents(revenueCents: number | null, expensesCents: number): number | null {
@@ -38,14 +50,15 @@ export function tripProfitCents(revenueCents: number | null, expensesCents: numb
   return revenueCents - expensesCents;
 }
 
-/** Inputs are NUMERIC ETB amounts; result value is cents. */
+/** Only COMPLETED trips count. Inputs are NUMERIC ETB amounts; result value is cents. */
 export function monthProfit(
-  trips: { revenue: number | null; expenses: number; has_revenue: boolean }[],
+  trips: { status: string; revenue: number | null; expenses: number; has_revenue: boolean }[],
 ): Metric {
   let total = 0;
   let counted = 0;
   let excluded = 0;
   for (const t of trips) {
+    if (t.status !== 'COMPLETED') continue;
     const rev = t.has_revenue ? toCents(t.revenue) : null;
     if (rev == null) {
       excluded += 1;

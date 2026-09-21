@@ -53,6 +53,8 @@ export type ServiceRow = {
   voided_at?: string | null;
 };
 export type TripExpenseRow = {
+  trip_id?: string;
+  category?: string;
   amount: number | string;
   expense_date: string;
   voided_at?: string | null;
@@ -83,8 +85,10 @@ export type VehicleMetrics = {
 
 /**
  * Metrics over the last 90 days.
- * Cost = non-voided trip expenses (trip FUEL expenses already cover fuel, so
- * fuel_records are NOT added) + non-null service costs. Distance = odometer span
+ * Cost = non-voided fuel_records totals + non-null service costs + non-voided trip
+ * expenses EXCLUDING category FUEL (those duplicate fuel_records). Trip expenses count
+ * only for trips in `eligibleTripIds` (not voided, not CANCELLED) when it is provided.
+ * Services with unknown (null) cost are reported as `excluded`. Distance = odometer span
  * across non-voided fuel and service records in the window.
  */
 export function computeVehicleMetrics(input: {
@@ -93,16 +97,26 @@ export function computeVehicleMetrics(input: {
   service: ServiceRow[];
   tripExpenses: TripExpenseRow[];
   financials: FinancialRow[];
+  eligibleTripIds?: Iterable<string>;
 }): VehicleMetrics {
   const { today } = input;
+  const eligible = input.eligibleTripIds ? new Set(input.eligibleTripIds) : null;
   const fuel = input.fuel.filter((f) => !f.voided_at && inWindow(f.fuel_date, today));
   const service = input.service.filter((s) => !s.voided_at && inWindow(s.service_date, today));
-  const expenses = input.tripExpenses.filter((e) => !e.voided_at && inWindow(e.expense_date, today));
+  const expenses = input.tripExpenses.filter(
+    (e) =>
+      !e.voided_at &&
+      inWindow(e.expense_date, today) &&
+      e.category !== 'FUEL' &&
+      (eligible == null || (e.trip_id != null && eligible.has(e.trip_id))),
+  );
 
   const costCents = sumCents([
+    ...fuel.map((f) => toCents(f.total_amount)),
     ...expenses.map((e) => toCents(e.amount)),
     ...service.map((s) => toCents(s.cost)),
   ]);
+  const excludedServices = service.filter((s) => toCents(s.cost) == null).length;
   const span = odometerSpan([...fuel.map((f) => num(f.odometer)), ...service.map((s) => num(s.odometer))]);
 
   const efficiency = fuelEfficiency(
@@ -113,11 +127,11 @@ export function computeVehicleMetrics(input: {
   );
 
   const monthTrips = input.financials
-    .filter((t) => isSameMonth(t.trip_date, today))
-    .map((t) => ({ revenue: num(t.revenue), expenses: num(t.expenses) ?? 0, has_revenue: t.has_revenue }));
+    .filter((t) => t.status === 'COMPLETED' && isSameMonth(t.trip_date, today))
+    .map((t) => ({ status: t.status, revenue: num(t.revenue), expenses: num(t.expenses) ?? 0, has_revenue: t.has_revenue }));
 
   return {
-    costPerKm: costPerKm(costCents, span),
+    costPerKm: costPerKm(costCents, span, excludedServices),
     fuelEfficiency: efficiency,
     monthProfit: monthProfit(monthTrips),
   };
@@ -133,6 +147,8 @@ export function reasonKey(reason: string): string {
       return 'noCost';
     case 'fewer than 2 fuel records with odometer':
       return 'fewerReadings';
+    case 'missing_odometer_in_span':
+      return 'missingOdometer';
     case 'no fuel quantity':
       return 'noFuel';
     case 'no trips with revenue':

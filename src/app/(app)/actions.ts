@@ -73,10 +73,11 @@ export async function voidRecord(_prev: FormState, fd: FormData): Promise<FormSt
     .from(parsed.data.table)
     .update({ voided_at: new Date().toISOString(), void_reason: parsed.data.reason })
     .eq('id', parsed.data.id)
+    .is('voided_at', null)
     .select('id');
 
   if (error) return { error: mapDbError(error) };
-  if (!data || data.length === 0) return { error: 'noPermission' };
+  if (!data || data.length === 0) return { error: 'notFound' };
 
   revalidatePath(returnTo);
   const sep = returnTo.includes('?') ? '&' : '?';

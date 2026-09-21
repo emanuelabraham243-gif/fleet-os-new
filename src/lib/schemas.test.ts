@@ -19,6 +19,9 @@ describe('schemas', () => {
     expect(zOdometer().parse(undefined)).toBeUndefined();
     expect(zOdometer().parse('12345')).toBe('12345');
     expect(msg(zOdometer().safeParse('-5'))).toBe('invalidNumber');
+    expect(msg(zOdometer().safeParse('0'))).toBe('invalidNumber');
+    expect(msg(zOdometer().safeParse('0.0'))).toBe('invalidNumber');
+    expect(zOdometer().parse('0.1')).toBe('0.1');
   });
   it('zDate', () => {
     expect(zDate().parse('2026-02-28')).toBe('2026-02-28');

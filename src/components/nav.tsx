@@ -85,7 +85,7 @@ export function AppNav() {
                 <Link
                   href={it.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 px-0.5 text-[11px] leading-tight ${
+                  className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-xs leading-tight ${
                     active ? 'font-bold text-brand-ink' : 'text-muted'
                   }`}
                 >
@@ -96,7 +96,7 @@ export function AppNav() {
                     />
                   ) : null}
                   {ICONS[it.key]}
-                  <span className="max-w-full truncate">{t('nav.' + it.key)}</span>
+                  <span className="max-w-full break-words text-center">{t('nav.' + it.key)}</span>
                 </Link>
               </li>
             );

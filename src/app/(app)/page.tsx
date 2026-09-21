@@ -34,12 +34,12 @@ export default async function HomePage() {
     supabase.from('drivers').select('id, name, status, license_expiry'),
     supabase
       .from('v_vehicle_documents')
-      .select('id, vehicle_id, document_type, expires_on')
+      .select('id, vehicle_id, document_type, expires_on, superseded')
       .not('expires_on', 'is', null)
       .lte('expires_on', cutoff),
     supabase
       .from('v_driver_documents')
-      .select('id, driver_id, document_type, expires_on')
+      .select('id, driver_id, document_type, expires_on, superseded')
       .not('expires_on', 'is', null)
       .lte('expires_on', cutoff),
     supabase
@@ -64,8 +64,8 @@ export default async function HomePage() {
   const vehicles = rows<Vehicle>(vehiclesR);
   const trips = rows<{ id: string; vehicle_id: string; driver_id: string; trip_date: string; created_at: string }>(tripsR);
   const drivers = rows<Driver>(driversR);
-  const vdocs = rows<{ id: string; vehicle_id: string; document_type: string; expires_on: string | null }>(vdocsR);
-  const ddocs = rows<{ id: string; driver_id: string; document_type: string; expires_on: string | null }>(ddocsR);
+  const vdocs = rows<{ id: string; vehicle_id: string; document_type: string; expires_on: string | null; superseded: boolean | null }>(vdocsR);
+  const ddocs = rows<{ id: string; driver_id: string; document_type: string; expires_on: string | null; superseded: boolean | null }>(ddocsR);
   const maint = rows<{ id: string; vehicle_id: string; service_category: string }>(maintR);
   const incidents = rows<{ id: string; vehicle_id: string; title: string }>(incR);
   const attnReminders = rows<{ id: string; type: string; params: unknown; entity_id: string }>(attnRemR);

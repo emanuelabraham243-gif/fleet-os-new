@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireViewer } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
@@ -6,7 +7,9 @@ import { formatDate, formatEtb } from '@/lib/format';
 import { toCents } from '@/lib/money';
 import { allowedTransitions, isTripStatus, TRIP_STATUSES } from '@/lib/trip-rules';
 import { Card, Chips, EmptyState, Flash, LinkButton, PageHeader, StatusBadge } from '@/components/ui';
+import { rows } from '@/components/home/query';
 import { setTripStatus } from './actions';
+import { StatusButton } from './status-button';
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
@@ -24,6 +27,7 @@ type TripRow = {
   profit: number | string | null;
 };
 
+const TRIP_LIMIT = 50;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function TripsPage({ searchParams }: { searchParams: SP }) {
@@ -39,7 +43,7 @@ export default async function TripsPage({ searchParams }: { searchParams: SP }) 
     .from('v_trip_financials')
     .select('trip_id, vehicle_id, driver_id, trip_date, origin, destination, status, revenue, expenses, has_expenses, profit')
     .order('trip_date', { ascending: false })
-    .limit(50);
+    .limit(TRIP_LIMIT);
   if (status !== 'all') q = q.eq('status', status);
 
   const [tripsRes, vehiclesRes, driversRes] = await Promise.all([
@@ -48,9 +52,9 @@ export default async function TripsPage({ searchParams }: { searchParams: SP }) 
     supabase.from('drivers').select('id, name'),
   ]);
 
-  const vehicles = new Map((vehiclesRes.data ?? []).map((v) => [v.id as string, v]));
-  const drivers = new Map((driversRes.data ?? []).map((d) => [d.id as string, d]));
-  const trips = (tripsRes.data ?? []) as TripRow[];
+  const vehicles = new Map(rows<{ id: string; name: string; plate_number: string }>(vehiclesRes).map((v) => [v.id, v]));
+  const drivers = new Map(rows<{ id: string; name: string }>(driversRes).map((d) => [d.id, d]));
+  const trips = rows<TripRow>(tripsRes);
 
   const chips = ['all', ...TRIP_STATUSES].map((s) => ({
     href: s === 'all' ? '/trips' : `/trips?status=${s}`,
@@ -58,21 +62,13 @@ export default async function TripsPage({ searchParams }: { searchParams: SP }) 
     active: s === status,
   }));
 
-  const warn = first(sp.warn);
-  const warnKey = warn === 'revenueFailed' ? 'trips.warnRevenueFailed' : warn === 'badTransition' ? 'trips.warnBadTransition' : null;
-
   return (
     <div>
       <PageHeader
         title={t('trips.title')}
         actions={<LinkButton href="/new/trip">{t('trips.add')}</LinkButton>}
       />
-      <Flash saved={sp.saved} error={sp.error} />
-      {warnKey ? (
-        <p role="status" className="mb-4 rounded-xl bg-warn-soft px-4 py-3 text-base font-medium text-warn-ink">
-          {t(warnKey)}
-        </p>
-      ) : null}
+      <Flash saved={sp.saved} error={sp.error} warn={sp.warn} />
       <Chips items={chips} />
 
       {trips.length === 0 ? (
@@ -107,7 +103,7 @@ export default async function TripsPage({ searchParams }: { searchParams: SP }) 
                     <StatusBadge group="tripStatus" code={trip.status} />
                   </div>
 
-                  <dl className="mt-3 grid grid-cols-3 gap-2 text-base">
+                  <dl className="mt-3 grid grid-cols-1 gap-2 text-base sm:grid-cols-3">
                     <div>
                       <dt className="text-sm text-muted">{t('trips.revenue')}</dt>
                       <dd className="font-semibold tabular-nums">
@@ -148,34 +144,81 @@ export default async function TripsPage({ searchParams }: { searchParams: SP }) 
                     >
                       {t('trips.viewExpenses')}
                     </Link>
-                    {next.map((to) => (
-                      <form key={to} action={setTripStatus}>
-                        <input type="hidden" name="id" value={trip.trip_id} />
-                        <input type="hidden" name="to" value={to} />
-                        <input type="hidden" name="back" value="/trips" />
-                        <button
-                          type="submit"
-                          className={`inline-flex min-h-12 items-center rounded-xl px-4 text-base font-semibold ${
-                            to === 'CANCELLED'
-                              ? 'border border-line text-bad-ink hover:bg-muted-soft'
-                              : 'bg-brand text-on-brand hover:bg-brand-strong'
-                          }`}
-                        >
-                          {to === 'IN_PROGRESS'
-                            ? t('trips.start')
-                            : to === 'COMPLETED'
-                              ? t('trips.complete')
-                              : t('trips.cancel')}
-                        </button>
-                      </form>
-                    ))}
+                    {next.includes('IN_PROGRESS') ? (
+                      <StatusForm id={trip.trip_id} to="IN_PROGRESS">
+                        <StatusButton>{t('trips.start')}</StatusButton>
+                      </StatusForm>
+                    ) : null}
+                    {next.includes('COMPLETED') ? (
+                      <ConfirmStep
+                        summary={t('trips.complete')}
+                        question={t('trips.confirmComplete')}
+                        primary
+                      >
+                        <StatusForm id={trip.trip_id} to="COMPLETED">
+                          <StatusButton>{t('trips.confirmYesComplete')}</StatusButton>
+                        </StatusForm>
+                      </ConfirmStep>
+                    ) : null}
                   </div>
+                  {next.includes('CANCELLED') ? (
+                    <div className="mt-3 border-t border-line pt-3">
+                      <ConfirmStep summary={t('trips.cancel')} question={t('trips.confirmCancel')}>
+                        <StatusForm id={trip.trip_id} to="CANCELLED">
+                          <StatusButton variant="danger">{t('trips.confirmYesCancel')}</StatusButton>
+                        </StatusForm>
+                      </ConfirmStep>
+                    </div>
+                  ) : null}
                 </Card>
               </li>
             );
           })}
         </ul>
       )}
+      {trips.length >= TRIP_LIMIT ? (
+        <p className="mt-4 text-sm text-muted">{t('trips.limitNote', { n: TRIP_LIMIT })}</p>
+      ) : null}
     </div>
+  );
+}
+
+function StatusForm({ id, to, children }: { id: string; to: string; children: ReactNode }) {
+  return (
+    <form action={setTripStatus}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="to" value={to} />
+      <input type="hidden" name="back" value="/trips" />
+      {children}
+    </form>
+  );
+}
+
+/** Two-step confirmation: opening the summary reveals the question and the real submit button. */
+function ConfirmStep({
+  summary,
+  question,
+  primary = false,
+  children,
+}: {
+  summary: string;
+  question: string;
+  primary?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group">
+      <summary
+        className={`inline-flex min-h-12 cursor-pointer list-none items-center rounded-xl px-4 text-base font-semibold leading-snug [&::-webkit-details-marker]:hidden ${
+          primary ? 'bg-brand text-on-brand hover:bg-brand-strong' : 'border border-line text-bad-ink hover:bg-muted-soft'
+        }`}
+      >
+        {summary}
+      </summary>
+      <div className="mt-2 rounded-xl bg-warn-soft p-3">
+        <p className="mb-3 text-base font-medium text-warn-ink">{question}</p>
+        {children}
+      </div>
+    </details>
   );
 }

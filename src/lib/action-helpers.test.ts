@@ -13,6 +13,17 @@ describe('mapDbError', () => {
     expect(mapDbError({ code: '23503' })).toBe('badReference');
     expect(mapDbError({ code: '23505' })).toBe('duplicate');
     expect(mapDbError({ message: 'boom' })).toBe('generic');
+    expect(
+      mapDbError({ code: '23505', message: 'duplicate key value violates unique constraint "trips_one_in_progress_per_vehicle"' }),
+    ).toBe('vehicleBusy');
+    expect(
+      mapDbError({ code: '23505', message: 'duplicate key', details: 'index trips_one_in_progress_per_vehicle' }),
+    ).toBe('vehicleBusy');
+    expect(mapDbError({ code: '23505', message: 'other_unique' })).toBe('duplicate');
+    expect(mapDbError({ code: '22P02' })).toBe('invalidNumber');
+    expect(mapDbError({ code: '22003' })).toBe('invalidNumber');
+    expect(mapDbError({ code: '23514', message: 'check constraint x' })).toBe('generic');
+    expect(mapDbError({ message: 'record is already voided' })).toBe('generic');
     expect(mapDbError(null)).toBe('generic');
   });
 });
@@ -20,7 +31,11 @@ describe('mapDbError', () => {
 describe('safeReturnTo', () => {
   it('accepts same-origin paths only', () => {
     expect(safeReturnTo('/trips?x=1', '/')).toBe('/trips?x=1');
-    for (const bad of ['//evil.com', 'https://x', '\\\\x', '/\\evil.com', 'trips', '', null, 5]) {
+    const bads: unknown[] = [
+      '//evil.com', 'https://x', '\\\\x', '/\\evil.com', 'trips', '', null, 5,
+      '/\\evil', '/a\\b', '/%2Fevil.com', '/%5cevil.com', '/a\nb', '/a\tb', '/\u0000x', '/\u007fx',
+    ];
+    for (const bad of bads) {
       expect(safeReturnTo(bad, '/fallback')).toBe('/fallback');
     }
   });

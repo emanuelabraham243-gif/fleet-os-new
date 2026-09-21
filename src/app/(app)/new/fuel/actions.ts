@@ -16,7 +16,7 @@ import {
   zUuid,
 } from '@/lib/schemas';
 import { formValues, mapDbError, type FormState } from '@/lib/action-helpers';
-import { isOdometerJump } from '@/lib/trip-rules';
+import { isOdometerSuspicious } from '@/lib/trip-rules';
 
 const fuelSchema = z.object({
   vehicle_id: zUuid(),
@@ -51,7 +51,7 @@ export async function createFuel(_prev: FormState, fd: FormData): Promise<FormSt
 
   if (!confirm && d.odometer !== undefined) {
     const current = vehicle.current_odometer == null ? null : Number(vehicle.current_odometer);
-    if (isOdometerJump(Number(d.odometer), current)) {
+    if (isOdometerSuspicious(Number(d.odometer), current)) {
       return { error: 'odometerJump', needsConfirm: true, values };
     }
   }

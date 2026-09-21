@@ -5,11 +5,13 @@ import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatEtb, todayAddis } from '@/lib/format';
 import { toCents } from '@/lib/money';
 import { Card, EmptyState, Flash, LinkButton, PageHeader, Section, StatusBadge } from '@/components/ui';
+import { rows } from '@/components/home/query';
 import { VoidForm } from '@/components/forms-core';
 import { ExpenseForm, RevenueForm } from './expense-form';
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
+const TRIP_LIMIT = 30;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
@@ -61,15 +63,15 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
     .select('trip_id, vehicle_id, trip_date, origin, destination, status, revenue, expenses, has_expenses, profit')
     .order('trip_date', { ascending: false });
   if (tripFilter) q = q.eq('trip_id', tripFilter).limit(1);
-  else if (vehicleFilter) q = q.eq('vehicle_id', vehicleFilter).limit(30);
-  else q = q.limit(30);
+  else if (vehicleFilter) q = q.eq('vehicle_id', vehicleFilter).limit(TRIP_LIMIT);
+  else q = q.limit(TRIP_LIMIT);
 
   const [tripsRes, vehiclesRes] = await Promise.all([
     q,
     supabase.from('vehicles').select('id, name, plate_number'),
   ]);
-  const trips = (tripsRes.data ?? []) as TripRow[];
-  const vehicles = new Map((vehiclesRes.data ?? []).map((v) => [v.id as string, v]));
+  const trips = rows<TripRow>(tripsRes);
+  const vehicles = new Map(rows<{ id: string; name: string; plate_number: string }>(vehiclesRes).map((v) => [v.id, v]));
   const ids = trips.map((x) => x.trip_id);
 
   const [expRes, revRes] = ids.length
@@ -87,16 +89,19 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
           .is('voided_at', null)
           .order('revenue_date', { ascending: false }),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
 
   const expByTrip = new Map<string, ExpenseRow[]>();
-  for (const e of (expRes.data ?? []) as ExpenseRow[]) {
+  for (const e of rows<ExpenseRow>(expRes)) {
     const list = expByTrip.get(e.trip_id) ?? [];
     list.push(e);
     expByTrip.set(e.trip_id, list);
   }
   const revByTrip = new Map<string, RevenueRow[]>();
-  for (const r of (revRes.data ?? []) as RevenueRow[]) {
+  for (const r of rows<RevenueRow>(revRes)) {
     const list = revByTrip.get(r.trip_id) ?? [];
     list.push(r);
     revByTrip.set(r.trip_id, list);
@@ -171,7 +176,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
                   <StatusBadge group="tripStatus" code={trip.status} />
                 </div>
 
-                <dl className="mt-3 grid grid-cols-3 gap-2 text-base">
+                <dl className="mt-3 grid grid-cols-1 gap-2 text-base sm:grid-cols-3">
                   <div>
                     <dt className="text-sm text-muted">{t('trips.revenue')}</dt>
                     <dd className="font-semibold tabular-nums">
@@ -272,6 +277,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
           })}
         </div>
       )}
+      {!tripFilter && trips.length >= TRIP_LIMIT ? (
+        <p className="mt-4 text-sm text-muted">{t('expenses.limitNote', { n: TRIP_LIMIT })}</p>
+      ) : null}
     </div>
   );
 }

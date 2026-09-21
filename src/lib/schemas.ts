@@ -42,7 +42,8 @@ export function zOdometer() {
     .transform((s, ctx) => {
       if (s == null || s.trim() === '') return undefined;
       const v = parseDecimal(s, { maxInt: 7, maxFrac: 1 });
-      if (v === null) {
+      // A missing odometer is never 0: reject zero/negative readings.
+      if (v === null || Number(v) <= 0) {
         ctx.addIssue({ code: 'custom', message: 'invalidNumber' });
         return z.NEVER;
       }

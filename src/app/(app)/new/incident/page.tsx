@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/format';
 import { isoToAddisLocal } from '@/lib/trip-rules';
 import { Card, PageHeader } from '@/components/ui';
+import { rows } from '@/components/home/query';
 import { IncidentForm } from './incident-form';
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
@@ -16,8 +17,9 @@ export default async function NewIncidentPage({ searchParams }: { searchParams: 
   const vParam = Array.isArray(sp.vehicle) ? sp.vehicle[0] : sp.vehicle;
 
   const supabase = await createClient();
-  const { data: vData } = await supabase.from('vehicles').select('id, name, plate_number').order('name');
-  const vehicles = vData ?? [];
+  const vehicles = rows<{ id: string; name: string; plate_number: string }>(
+    await supabase.from('vehicles').select('id, name, plate_number').order('name'),
+  );
   const vehicle = vParam && UUID.test(vParam) ? vehicles.find((v) => v.id === vParam) : undefined;
 
   if (!vehicle) {
@@ -40,7 +42,7 @@ export default async function NewIncidentPage({ searchParams }: { searchParams: 
                 {t('incidents.choose')}
               </option>
               {vehicles.map((v) => (
-                <option key={v.id as string} value={v.id as string}>
+                <option key={v.id} value={v.id}>
                   {`${v.name} · ${v.plate_number}`}
                 </option>
               ))}
@@ -62,16 +64,16 @@ export default async function NewIncidentPage({ searchParams }: { searchParams: 
     supabase
       .from('trips')
       .select('id, trip_date, origin, destination')
-      .eq('vehicle_id', vehicle.id as string)
+      .eq('vehicle_id', vehicle.id)
       .is('voided_at', null)
       .order('trip_date', { ascending: false })
       .limit(20),
   ]);
 
-  const drivers = (dRes.data ?? []).map((d) => ({ value: d.id as string, label: d.name as string }));
-  const trips = (tRes.data ?? []).map((x) => ({
-    value: x.id as string,
-    label: `${formatDate(x.trip_date as string, locale)} · ${x.origin} → ${x.destination}`,
+  const drivers = rows<{ id: string; name: string }>(dRes).map((d) => ({ value: d.id, label: d.name }));
+  const trips = rows<{ id: string; trip_date: string; origin: string; destination: string }>(tRes).map((x) => ({
+    value: x.id,
+    label: `${formatDate(x.trip_date, locale)} · ${x.origin} → ${x.destination}`,
   }));
 
   return (
@@ -79,7 +81,7 @@ export default async function NewIncidentPage({ searchParams }: { searchParams: 
       <PageHeader title={t('incidents.title')} subtitle={`${vehicle.name} · ${vehicle.plate_number}`} />
       <Card>
         <IncidentForm
-          vehicleId={vehicle.id as string}
+          vehicleId={vehicle.id}
           drivers={drivers}
           trips={trips}
           nowLocal={isoToAddisLocal(new Date())}

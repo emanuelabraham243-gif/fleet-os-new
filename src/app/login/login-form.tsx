@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { useI18n } from '@/lib/i18n-client';
 import { FormMessage, SubmitButton, TextField, useFormAction } from '@/components/forms-core';
 import { sendMagicLink, signInWithPassword } from './actions';
@@ -15,6 +16,7 @@ export function LoginForm() {
         <FormMessage state={pw.state} />
         <TextField
           name="email"
+          type="email"
           label={t('auth.email')}
           state={pw.state}
           required
@@ -43,6 +45,7 @@ export function LoginForm() {
         </div>
         <TextField
           name="email"
+          type="email"
           label={t('auth.email')}
           state={ml.state}
           required
@@ -50,12 +53,7 @@ export function LoginForm() {
           autoComplete="email"
           autoCapitalize="none"
         />
-        <button
-          type="submit"
-          className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-line bg-surface px-5 text-base font-semibold hover:bg-muted-soft"
-        >
-          {t('auth.magicLink')}
-        </button>
+        <SubmitButton variant="secondary">{t('auth.magicLink')}</SubmitButton>
       </form>
     </div>
   );
@@ -63,24 +61,25 @@ export function LoginForm() {
 
 function PasswordInput({ label, fieldError }: { label: string; fieldError?: string }) {
   const { t } = useI18n();
+  const id = useId();
   return (
     <div className="mb-4">
-      <label htmlFor="f-password" className="mb-1 block text-base font-medium">
+      <label htmlFor={id} className="mb-1 block text-base font-medium">
         {label}
       </label>
       <input
-        id="f-password"
+        id={id}
         name="password"
         type="password"
         required
         autoComplete="current-password"
         aria-invalid={fieldError ? true : undefined}
-        aria-describedby={fieldError ? 'f-password-err' : undefined}
-        className="block min-h-12 w-full rounded-xl border border-line bg-surface px-4 py-2 text-base"
+        aria-describedby={fieldError ? `${id}-err` : undefined}
+        className="block min-h-12 w-full rounded-xl border border-input-border bg-surface px-4 py-2 text-base"
       />
       {fieldError ? (
-        <p id="f-password-err" role="alert" className="mt-1 text-sm font-medium text-bad-ink">
-          {t('errors.' + fieldError)}
+        <p id={`${id}-err`} role="alert" className="mt-1 text-sm font-medium text-bad-ink">
+          {t(fieldError.includes('.') ? fieldError : 'errors.' + fieldError)}
         </p>
       ) : null}
     </div>

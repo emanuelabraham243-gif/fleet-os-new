@@ -10,6 +10,17 @@ import type { FormState } from '@/lib/action-helpers';
 const emailSchema = z.email();
 const passwordLogin = z.object({ email: z.email(), password: z.string().min(1) });
 
+/** Never trusts the client-controlled Origin header. */
+async function siteOrigin(): Promise<string> {
+  const configured = process.env.SITE_URL?.trim().replace(/\/+$/, '');
+  if (configured) return configured;
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  if (!host) return '';
+  const proto = h.get('x-forwarded-proto') ?? (/^(localhost|127\.0\.0\.1)/.test(host) ? 'http' : 'https');
+  return `${proto.split(',')[0].trim()}://${host.split(',')[0].trim()}`;
+}
+
 export async function signInWithPassword(_prev: FormState, fd: FormData): Promise<FormState> {
   const email = String(fd.get('email') ?? '').trim();
   const values = { email };
@@ -50,10 +61,7 @@ export async function sendMagicLink(_prev: FormState, fd: FormData): Promise<For
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { fieldErrors: { email: 'required' }, values };
 
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
-  const origin = h.get('origin') ?? (host ? `${proto}://${host}` : '');
+  const origin = await siteOrigin();
 
   const supabase = await createClient();
   // Result deliberately ignored so the response never reveals whether the email exists.
