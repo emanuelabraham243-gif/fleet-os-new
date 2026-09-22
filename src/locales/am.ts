@@ -55,6 +55,7 @@ export const am: Widen<typeof en> = {
       MEDICAL_CERTIFICATE: 'የጤና ምስክር ወረቀት', DRIVING_LICENSE: 'መንጃ ፈቃድ', OTHER: 'ሌላ',
     },
     incidentStatus: { OPEN: 'ክፍት', REVIEWED: 'የተገመገመ', CLOSED: 'የተዘጋ' },
+    driverStatus: { ACTIVE: 'ንቁ', INACTIVE: 'ንቁ ያልሆነ' },
     role: { admin: 'አስተዳዳሪ', staff: 'ሠራተኛ' },
     priority: { low: 'ዝቅተኛ', normal: 'መደበኛ', high: 'ከፍተኛ' },
   },

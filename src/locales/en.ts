@@ -52,6 +52,7 @@ export const en = {
       MEDICAL_CERTIFICATE: 'Medical certificate', DRIVING_LICENSE: 'Driving license', OTHER: 'Other',
     },
     incidentStatus: { OPEN: 'Open', REVIEWED: 'Reviewed', CLOSED: 'Closed' },
+    driverStatus: { ACTIVE: 'Active', INACTIVE: 'Inactive' },
     role: { admin: 'Administrator', staff: 'Staff' },
     priority: { low: 'Low', normal: 'Normal', high: 'High' },
   },

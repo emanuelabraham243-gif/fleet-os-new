@@ -73,7 +73,7 @@ export function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
 
 const RED = new Set(['EXPIRED', 'OVERDUE', 'OUT_OF_SERVICE', 'OFFLINE', 'CANCELLED', 'HIGH', 'CRITICAL', 'URGENT']);
 const AMBER = new Set(['EXPIRING_SOON', 'DUE_SOON', 'DELAYED', 'MAINTENANCE', 'PLANNED', 'MEDIUM', 'STALE']);
-const GREEN = new Set(['VALID', 'OK', 'LIVE', 'COMPLETED', 'AVAILABLE', 'CLOSED', 'DONE', 'RESOLVED', 'LOW']);
+const GREEN = new Set(['VALID', 'OK', 'LIVE', 'COMPLETED', 'AVAILABLE', 'CLOSED', 'DONE', 'RESOLVED', 'LOW', 'ACTIVE']);
 const BLUE = new Set(['ON_TRIP', 'IN_PROGRESS', 'OPEN', 'SCHEDULED']);
 
 export function statusTone(group: string, code: string): Tone {

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { z } from 'zod';
-import { requireViewer } from '@/lib/auth';
+import { requireViewer, isAdmin } from '@/lib/auth';
 import { getI18n, type I18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatEtb, formatKm, formatNumber, todayAddis } from '@/lib/format';
@@ -19,6 +19,7 @@ import {
 } from '@/lib/vehicle-file';
 import { Badge, Card, EmptyState, Flash, LinkButton, Metric, PageHeader, Section, StatusBadge } from '@/components/ui';
 import { row, rows } from '@/components/home/query';
+import { VehicleForm } from '../vehicle-form';
 
 type DocRow = {
   id: string;
@@ -36,7 +37,8 @@ export default async function VehicleFilePage({
   params: Promise<{ id: string }>;
   searchParams: SP;
 }) {
-  await requireViewer();
+  const { profile } = await requireViewer();
+  const admin = isAdmin(profile);
   const { id } = await params;
   const sp = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -52,7 +54,7 @@ export default async function VehicleFilePage({
     await Promise.all([
       supabase
         .from('vehicles')
-        .select('id, name, plate_number, make, model, year, status, current_odometer')
+        .select('id, name, plate_number, make, model, year, status, current_odometer, notes')
         .eq('id', id)
         .maybeSingle(),
       supabase.from('drivers').select('id, name'),
@@ -134,6 +136,7 @@ export default async function VehicleFilePage({
     year: number | null;
     status: string;
     current_odometer: number | string | null;
+    notes: string | null;
   }>(vehicleR);
   if (!vehicle) notFound();
 
@@ -203,6 +206,30 @@ export default async function VehicleFilePage({
           <dd className="tabular-nums">{odo == null ? t('common.unknown') : formatKm(odo, locale)}</dd>
         </div>
       </dl>
+
+      {admin ? (
+        <details className="mb-6 rounded-2xl border border-line bg-surface p-4">
+          <summary className="flex min-h-12 cursor-pointer items-center text-lg font-semibold">
+            {t('vehicles.editVehicle')}
+          </summary>
+          <div className="mt-3">
+            <VehicleForm
+              vehicle={{
+                id: vehicle.id,
+                name: vehicle.name,
+                plate_number: vehicle.plate_number,
+                make: vehicle.make,
+                model: vehicle.model,
+                year: vehicle.year,
+                current_odometer: vehicle.current_odometer,
+                notes: vehicle.notes,
+                status: vehicle.status,
+                onTrip: Boolean(openTrip),
+              }}
+            />
+          </div>
+        </details>
+      ) : null}
 
       <div className="mb-6 grid grid-cols-1 gap-3">
         <MetricCard

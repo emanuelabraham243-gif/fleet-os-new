@@ -1,11 +1,14 @@
 import Link from 'next/link';
-import { requireViewer } from '@/lib/auth';
+import { requireViewer, isAdmin } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { formatKm } from '@/lib/format';
 import { currentTripByVehicle } from '@/lib/vehicle-file';
-import { EmptyState, PageHeader, StatusBadge } from '@/components/ui';
+import { EmptyState, Flash, LinkButton, PageHeader, StatusBadge } from '@/components/ui';
 import { rows } from '@/components/home/query';
+import { VehicleForm } from './vehicle-form';
+
+type SP = Promise<Record<string, string | string[] | undefined>>;
 
 type Vehicle = {
   id: string;
@@ -18,8 +21,10 @@ type Vehicle = {
   current_odometer: number | string | null;
 };
 
-export default async function VehiclesPage() {
-  await requireViewer();
+export default async function VehiclesPage({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams;
+  const { profile } = await requireViewer();
+  const admin = isAdmin(profile);
   const { t, locale } = await getI18n();
   const supabase = await createClient();
 
@@ -43,7 +48,27 @@ export default async function VehiclesPage() {
 
   return (
     <div>
-      <PageHeader title={t('vehicles.title')} />
+      <PageHeader
+        title={t('vehicles.title')}
+        actions={
+          <LinkButton href="/drivers" variant="secondary">
+            {t('vehicles.driversLink')}
+          </LinkButton>
+        }
+      />
+      <Flash saved={sp.saved} error={sp.error} />
+
+      {admin ? (
+        <details className="mb-4 rounded-2xl border border-line bg-surface p-4">
+          <summary className="flex min-h-12 cursor-pointer items-center text-lg font-semibold">
+            {t('vehicles.addVehicle')}
+          </summary>
+          <div className="mt-3">
+            <VehicleForm />
+          </div>
+        </details>
+      ) : null}
+
       {vehicles.length === 0 ? (
         <EmptyState title={t('vehicles.empty')} hint={t('vehicles.emptyHint')} />
       ) : (
