@@ -24,7 +24,11 @@ export function ScheduleForm({ vehicles }: { vehicles: { id: string; label: stri
       noValidate
       onSubmit={(e) => {
         const fd = new FormData(e.currentTarget);
-        const ok = hasInterval(String(fd.get('interval_km') ?? ''), String(fd.get('interval_days') ?? ''));
+        const ok = hasInterval(
+          String(fd.get('interval_km') ?? ''),
+          String(fd.get('interval_days') ?? ''),
+          String(fd.get('interval_trips') ?? ''),
+        );
         setClientError(!ok);
         if (!ok) e.preventDefault();
       }}
@@ -58,6 +62,13 @@ export function ScheduleForm({ vehicles }: { vehicles: { id: string; label: stri
         hint={t('maintenance.intervalHint')}
       />
       <NumberField name="interval_days" label={t('maintenance.intervalDays')} state={state} inputMode="numeric" />
+      <NumberField
+        name="interval_trips"
+        label={t('maintenance.intervalTrips')}
+        state={state}
+        inputMode="numeric"
+        hint={t('maintenance.intervalTripsHint')}
+      />
       <DateField
         name="next_due_date"
         label={t('maintenance.nextDueDate')}

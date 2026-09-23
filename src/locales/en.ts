@@ -51,6 +51,7 @@ export const en = {
       INSURANCE: 'Insurance', ANNUAL_INSPECTION: 'Annual inspection', REGISTRATION: 'Registration (Libre)',
       MEDICAL_CERTIFICATE: 'Medical certificate', DRIVING_LICENSE: 'Driving license', OTHER: 'Other',
     },
+    generalDocCategory: { FAMILY: 'Family', SCHOOL: 'School', PERSONAL: 'Personal', OTHER: 'Other' },
     incidentStatus: { OPEN: 'Open', REVIEWED: 'Reviewed', CLOSED: 'Closed' },
     driverStatus: { ACTIVE: 'Active', INACTIVE: 'Inactive' },
     role: { admin: 'Administrator', staff: 'Staff' },

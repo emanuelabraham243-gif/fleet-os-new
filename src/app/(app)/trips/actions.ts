@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { requireViewer } from '@/lib/auth';
-import { fieldErrorsFromZod, zChoice, zDate, zMoney, zText, zUuid } from '@/lib/schemas';
+import { fieldErrorsFromZod, zDate, zMoney, zText, zUuid } from '@/lib/schemas';
 import { formValues, mapDbError, type FormState } from '@/lib/action-helpers';
 import { canTransition, isTripStatus, tripDuplicateKey } from '@/lib/trip-rules';
 
@@ -15,7 +15,6 @@ const createSchema = z.object({
   trip_date: zDate({ allowFuture: true }),
   origin: zText(120),
   destination: zText(120),
-  status: zChoice(['PLANNED', 'IN_PROGRESS'] as const),
   revenue: z.string().optional(),
 });
 
@@ -62,7 +61,7 @@ export async function createTrip(_prev: FormState, fd: FormData): Promise<FormSt
     p_trip_date: d.trip_date,
     p_origin: d.origin,
     p_destination: d.destination,
-    p_status: d.status,
+    p_status: 'PLANNED',
     p_notes: null,
     p_revenue: revenue ?? null,
     p_revenue_description: null,

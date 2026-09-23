@@ -6,6 +6,9 @@ export const SERVICE_CATEGORIES = [
 
 export const VEHICLE_DOC_TYPES = ['INSURANCE', 'ANNUAL_INSPECTION', 'REGISTRATION', 'OTHER'] as const;
 export const DRIVER_DOC_TYPES = ['DRIVING_LICENSE', 'MEDICAL_CERTIFICATE', 'OTHER'] as const;
+// General file storage, not tied to a vehicle or driver. `category` is a plain text column
+// (see general_documents migration) so new buckets are an app-side list change, not a schema one.
+export const GENERAL_DOC_CATEGORIES = ['FAMILY', 'SCHOOL', 'PERSONAL', 'OTHER'] as const;
 
 export const ODOMETER_JUMP_KM = 2000;
 
@@ -19,14 +22,19 @@ export function odometerJumpNeedsConfirm(
 }
 
 /** Matches the DB check: a schedule needs at least one interval. */
-export function hasInterval(km: string | undefined | null, days: string | undefined | null): boolean {
-  return Boolean((km ?? '').trim() || (days ?? '').trim());
+export function hasInterval(
+  km: string | undefined | null,
+  days: string | undefined | null,
+  trips?: string | undefined | null,
+): boolean {
+  return Boolean((km ?? '').trim() || (days ?? '').trim() || (trips ?? '').trim());
 }
 
 export type ScheduleFacts = {
   next_due_date: string | null;
   next_due_odometer: number | string | null;
   current_odometer: number | string | null;
+  next_due_trip_count?: number | null;
 };
 
 export type UnknownReason = 'noDueInfo' | 'noOdometer' | null;
@@ -37,7 +45,9 @@ export type UnknownReason = 'noDueInfo' | 'noOdometer' | null;
  * noOdometer: a km due exists but the vehicle odometer is unknown.
  */
 export function unknownReason(s: ScheduleFacts): UnknownReason {
-  if (s.next_due_date == null && s.next_due_odometer == null) return 'noDueInfo';
+  if (s.next_due_date == null && s.next_due_odometer == null && (s.next_due_trip_count ?? null) == null) {
+    return 'noDueInfo';
+  }
   if (s.next_due_odometer != null && s.current_odometer == null) return 'noOdometer';
   return null;
 }

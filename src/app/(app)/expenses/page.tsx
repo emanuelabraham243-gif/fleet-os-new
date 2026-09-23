@@ -44,6 +44,16 @@ type RevenueRow = {
   revenue_date: string;
   created_at: string;
 };
+type ServiceCostRow = {
+  id: string;
+  vehicle_id: string;
+  service_date: string;
+  category: string;
+  cost: number | string | null;
+  service_provider: string | null;
+};
+
+const SERVICE_COST_LIMIT = 30;
 
 export default async function ExpensesPage({ searchParams }: { searchParams: SP }) {
   const { profile } = await requireViewer();
@@ -66,12 +76,23 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
   else if (vehicleFilter) q = q.eq('vehicle_id', vehicleFilter).limit(TRIP_LIMIT);
   else q = q.limit(TRIP_LIMIT);
 
-  const [tripsRes, vehiclesRes] = await Promise.all([
+  let svcQuery = supabase
+    .from('service_records')
+    .select('id, vehicle_id, service_date, category, cost, service_provider')
+    .is('voided_at', null)
+    .not('cost', 'is', null)
+    .order('service_date', { ascending: false })
+    .limit(SERVICE_COST_LIMIT);
+  if (vehicleFilter) svcQuery = svcQuery.eq('vehicle_id', vehicleFilter);
+
+  const [tripsRes, vehiclesRes, svcRes] = await Promise.all([
     q,
     supabase.from('vehicles').select('id, name, plate_number'),
+    tripFilter ? Promise.resolve({ data: [], error: null }) : svcQuery,
   ]);
   const trips = rows<TripRow>(tripsRes);
   const vehicles = new Map(rows<{ id: string; name: string; plate_number: string }>(vehiclesRes).map((v) => [v.id, v]));
+  const services = rows<ServiceCostRow>(svcRes);
   const ids = trips.map((x) => x.trip_id);
 
   const [expRes, revRes] = ids.length
@@ -107,6 +128,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
     revByTrip.set(r.trip_id, list);
   }
 
+  const tripCostsCents = trips.reduce((sum, x) => sum + (x.has_expenses ? (toCents(x.expenses) ?? 0) : 0), 0);
+  const serviceCostsCents = services.reduce((sum, r) => sum + (toCents(r.cost) ?? 0), 0);
+  const totalCostsCents = tripCostsCents + serviceCostsCents;
+
   const tripOptions = trips.map((x) => {
     const v = vehicles.get(x.vehicle_id);
     return {
@@ -126,6 +151,23 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
     <div>
       <PageHeader title={t('expenses.title')} />
       <Flash saved={sp.saved} error={sp.error} />
+
+      <Card className="mb-4">
+        <dl className="grid grid-cols-1 gap-2 text-base sm:grid-cols-3">
+          <div>
+            <dt className="text-sm text-muted">{t('expenses.summaryTripCosts')}</dt>
+            <dd className="font-semibold tabular-nums">{formatEtb(tripCostsCents, locale)}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-muted">{t('expenses.summaryServiceCosts')}</dt>
+            <dd className="font-semibold tabular-nums">{formatEtb(serviceCostsCents, locale)}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-muted">{t('expenses.summaryTotal')}</dt>
+            <dd className="font-semibold tabular-nums">{formatEtb(totalCostsCents, locale)}</dd>
+          </div>
+        </dl>
+      </Card>
 
       {trips.length > 0 ? (
         <details open={Boolean(tripFilter)} className="mb-4 rounded-2xl border border-line bg-surface p-4 shadow-sm">
@@ -154,6 +196,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
           action={<LinkButton href="/new/trip">{t('trips.add')}</LinkButton>}
         />
       ) : (
+        <Section title={t('expenses.tripCostsSection')}>
         <div className="space-y-4">
           {trips.map((trip) => {
             const v = vehicles.get(trip.vehicle_id);
@@ -276,9 +319,52 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
             );
           })}
         </div>
+        </Section>
       )}
       {!tripFilter && trips.length >= TRIP_LIMIT ? (
         <p className="mt-4 text-sm text-muted">{t('expenses.limitNote', { n: TRIP_LIMIT })}</p>
+      ) : null}
+
+      {!tripFilter ? (
+        <Section title={t('expenses.serviceCostsSection')}>
+          {services.length === 0 ? (
+            <p className="text-base text-muted">{t('expenses.noServiceCosts')}</p>
+          ) : (
+            <div className="space-y-3">
+              {services.map((r) => {
+                const v = vehicles.get(r.vehicle_id);
+                return (
+                  <Card key={r.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold leading-snug">{label('serviceCategory', r.category)}</p>
+                        <p className="text-base text-muted">{v ? `${v.name} · ${v.plate_number}` : ''}</p>
+                      </div>
+                      <p className="shrink-0 text-base">{formatDate(r.service_date, locale)}</p>
+                    </div>
+                    <dl className="mt-2 space-y-1 text-base">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted">{t('maintenance.cost')}</dt>
+                        <dd className="tabular-nums">{formatEtb(toCents(r.cost) ?? 0, locale)}</dd>
+                      </div>
+                      {r.service_provider ? (
+                        <div className="flex justify-between gap-3">
+                          <dt className="text-muted">{t('maintenance.provider')}</dt>
+                          <dd className="text-right">{r.service_provider}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    {admin ? (
+                      <div className="mt-3">
+                        <VoidForm table="service_records" id={r.id} returnTo={returnTo} />
+                      </div>
+                    ) : null}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </Section>
       ) : null}
     </div>
   );

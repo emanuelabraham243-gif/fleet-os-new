@@ -54,6 +54,7 @@ export const am: Widen<typeof en> = {
       INSURANCE: 'ኢንሹራንስ', ANNUAL_INSPECTION: 'ዓመታዊ ቁጥጥር (ቦሎ)', REGISTRATION: 'ሊብሬ',
       MEDICAL_CERTIFICATE: 'የጤና ምስክር ወረቀት', DRIVING_LICENSE: 'መንጃ ፈቃድ', OTHER: 'ሌላ',
     },
+    generalDocCategory: { FAMILY: 'የቤተሰብ', SCHOOL: 'የትምህርት ቤት', PERSONAL: 'የግል', OTHER: 'ሌላ' },
     incidentStatus: { OPEN: 'ክፍት', REVIEWED: 'የተገመገመ', CLOSED: 'የተዘጋ' },
     driverStatus: { ACTIVE: 'ንቁ', INACTIVE: 'ንቁ ያልሆነ' },
     role: { admin: 'አስተዳዳሪ', staff: 'ሠራተኛ' },

@@ -25,9 +25,12 @@ type Schedule = {
   service_category: string;
   interval_km: number | string | null;
   interval_days: number | null;
+  interval_trips: number | null;
   next_due_date: string | null;
   next_due_odometer: number | string | null;
+  next_due_trip_count: number | null;
   current_odometer: number | string | null;
+  current_trip_count: number | null;
   overall_status: string | null;
 };
 
@@ -95,6 +98,22 @@ function ScheduleCard({ s, i18n, today }: { s: Schedule; i18n: I18n; today: stri
             </dd>
           </div>
         ) : null}
+        {s.next_due_trip_count != null ? (
+          <div>
+            <dt className="sr-only">{t('maintenance.dueTripLabel')}</dt>
+            <dd>
+              {t('maintenance.everyTrips', { n: s.next_due_trip_count })}
+              {s.current_trip_count != null ? (
+                <span className="text-muted">
+                  {' · '}
+                  {s.next_due_trip_count - s.current_trip_count >= 0
+                    ? t('maintenance.tripsLeft', { n: s.next_due_trip_count - s.current_trip_count })
+                    : t('maintenance.tripsOver', { n: Math.abs(s.next_due_trip_count - s.current_trip_count) })}
+                </span>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt className="sr-only">{t('maintenance.odometer')}</dt>
           <dd className="text-muted">
@@ -103,13 +122,14 @@ function ScheduleCard({ s, i18n, today }: { s: Schedule; i18n: I18n; today: stri
               : t('maintenance.odometerUnknown')}
           </dd>
         </div>
-        {s.interval_km != null || s.interval_days != null ? (
+        {s.interval_km != null || s.interval_days != null || s.interval_trips != null ? (
           <div>
             <dt className="sr-only">{t('maintenance.intervalLabel')}</dt>
             <dd className="text-sm text-muted">
               {[
                 s.interval_km != null ? t('maintenance.everyKm', { km: formatKm(num(s.interval_km), locale) }) : null,
                 s.interval_days != null ? t('maintenance.everyDays', { n: s.interval_days }) : null,
+                s.interval_trips != null ? t('maintenance.everyTrips', { n: s.interval_trips }) : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}

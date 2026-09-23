@@ -22,7 +22,7 @@ export function TripForm({
   drivers: { value: string; label: string }[];
   today: string;
 }) {
-  const { t, label } = useI18n();
+  const { t } = useI18n();
   const { state, formAction } = useFormAction(createTrip);
   return (
     <form action={formAction} noValidate>
@@ -52,17 +52,6 @@ export function TripForm({
         required
         maxLength={120}
         autoComplete="off"
-      />
-      <SelectField
-        name="status"
-        label={t('trips.form.initialStatus')}
-        state={state}
-        required
-        defaultValue="PLANNED"
-        options={[
-          { value: 'PLANNED', label: label('tripStatus', 'PLANNED') },
-          { value: 'IN_PROGRESS', label: label('tripStatus', 'IN_PROGRESS') },
-        ]}
       />
       <NumberField
         name="revenue"

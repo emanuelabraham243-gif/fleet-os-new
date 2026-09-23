@@ -115,6 +115,18 @@ const scheduleSchema = z.object({
       }
       return Number(t);
     }),
+  interval_trips: z
+    .string()
+    .optional()
+    .transform((s, ctx) => {
+      if (s == null || s.trim() === '') return undefined;
+      const t = s.trim();
+      if (!/^\d{1,3}$/.test(t) || Number(t) <= 0) {
+        ctx.addIssue({ code: 'custom', message: 'invalidNumber' });
+        return z.NEVER;
+      }
+      return Number(t);
+    }),
   next_due_date: z.preprocess(emptyToUndef, zDate({ allowFuture: true }).optional()),
   next_due_odometer: zOdometer(),
 });
@@ -129,7 +141,7 @@ export async function createSchedule(_prev: FormState, fd: FormData): Promise<Fo
     return { fieldErrors: fieldErrorsFromZod(parsed.error), values };
   }
   const d = parsed.data;
-  if (!hasInterval(values.interval_km, values.interval_days)) {
+  if (!hasInterval(values.interval_km, values.interval_days, values.interval_trips)) {
     return { error: 'maintenance.intervalRequired', values };
   }
 
@@ -149,6 +161,7 @@ export async function createSchedule(_prev: FormState, fd: FormData): Promise<Fo
     service_category: d.service_category,
     interval_km: d.interval_km ?? null,
     interval_days: d.interval_days ?? null,
+    interval_trips: d.interval_trips ?? null,
     next_due_date: d.next_due_date ?? null,
     next_due_odometer: d.next_due_odometer ?? null,
   });

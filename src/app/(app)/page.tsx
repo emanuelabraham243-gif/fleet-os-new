@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { todayAddis, formatDate, formatNumber } from '@/lib/format';
 import { classifySignal, getGpsProvider } from '@/lib/gps';
 import { currentTripByVehicle, fleetCounts } from '@/lib/vehicle-file';
-import { Badge, Card, EmptyState, LinkButton, PageHeader, Section, StatusBadge, statusTone } from '@/components/ui';
+import { Badge, Card, EmptyState, PageHeader, Section, StatusBadge, statusTone } from '@/components/ui';
 import { buildAttention, attentionCutoff } from '@/components/home/attention';
 import { priorityTone, reminderText } from '@/components/home/reminder-text';
 import { rows } from '@/components/home/query';
@@ -97,18 +97,6 @@ export default async function HomePage() {
   return (
     <div>
       <PageHeader title={t('navFull.home')} />
-
-      <Section title={t('home.quickTitle')}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <LinkButton href="/new/fuel">{t('home.quick.fuel')}</LinkButton>
-          <LinkButton href="/new/trip" variant="secondary">
-            {t('home.quick.trip')}
-          </LinkButton>
-          <LinkButton href="/new/incident" variant="secondary">
-            {t('home.quick.incident')}
-          </LinkButton>
-        </div>
-      </Section>
 
       <Section title={t('home.attentionTitle')}>
         {attention.length === 0 ? (
