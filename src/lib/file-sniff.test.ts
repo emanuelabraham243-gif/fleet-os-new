@@ -11,6 +11,9 @@ describe('sniffMime', () => {
     expect(sniffMime(u(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0))).toBe('image/png');
     expect(sniffMime(ascii('RIFF' + NUL4 + 'WEBPVP8 '))).toBe('image/webp');
     expect(sniffMime(ascii('%PDF-1.7\n'))).toBe('application/pdf');
+    expect(sniffMime(ascii('PK\x03\x04' + 'garbage' + 'xl/workbook.xml' + 'more'))).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
   });
   it('rejects empty and short input', () => {
     expect(sniffMime(new Uint8Array())).toBeNull();
@@ -25,9 +28,12 @@ describe('sniffMime', () => {
     expect(sniffMime(ascii('GIF89a'))).toBeNull();
     expect(sniffMime(u(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0b))).toBeNull();
     expect(sniffMime(u(0, 0xff, 0xd8, 0xff))).toBeNull();
+    expect(sniffMime(ascii('PK\x03\x04' + 'word/document.xml'))).toBeNull();
+    expect(sniffMime(ascii('PK\x03\x04' + 'nothing relevant here'))).toBeNull();
   });
   it('maps extensions from sniffed type', () => {
     expect(MIME_EXT['image/jpeg']).toBe('jpg');
     expect(MIME_EXT['application/pdf']).toBe('pdf');
+    expect(MIME_EXT['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']).toBe('xlsx');
   });
 });

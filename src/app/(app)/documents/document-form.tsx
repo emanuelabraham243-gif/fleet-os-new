@@ -62,7 +62,7 @@ export function DocumentForm({
         label={t('documents.formFile')}
         state={state}
         hint={t('documents.formFileHint')}
-        accept="image/jpeg,image/png,image/webp,application/pdf"
+        accept="image/jpeg,image/png,image/webp,application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       />
       <SubmitButton>{t('documents.save')}</SubmitButton>
     </form>
