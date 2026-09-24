@@ -143,6 +143,36 @@ export function LinkButton({
   );
 }
 
+export function Pager({
+  page, hasMore, prevHref, nextHref, prevLabel, nextLabel, pageLabel,
+}: {
+  page: number;
+  hasMore: boolean;
+  prevHref: string | null;
+  nextHref: string | null;
+  prevLabel: string;
+  nextLabel: string;
+  pageLabel: string;
+}) {
+  if (page === 1 && !hasMore) return null;
+  const btnClass = 'inline-flex min-h-12 items-center rounded-xl border border-line bg-surface px-4 text-base font-semibold hover:bg-muted-soft';
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3">
+      {prevHref ? (
+        <Link href={prevHref} className={btnClass}>{prevLabel}</Link>
+      ) : (
+        <span />
+      )}
+      <span className="text-sm text-muted">{pageLabel}</span>
+      {hasMore && nextHref ? (
+        <Link href={nextHref} className={btnClass}>{nextLabel}</Link>
+      ) : (
+        <span />
+      )}
+    </div>
+  );
+}
+
 export function Chips({ items }: { items: { href: string; label: string; active: boolean }[] }) {
   return (
     <div className="-mx-4 mb-4 overflow-x-auto px-4">

@@ -2,15 +2,18 @@ import { getI18n, type I18n } from '@/lib/i18n';
 import { requireViewer, isAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, todayAddis } from '@/lib/format';
-import { Card, Badge, Chips, EmptyState, Flash, PageHeader, StatusBadge } from '@/components/ui';
+import { Card, Badge, Chips, EmptyState, Flash, PageHeader, Pager, StatusBadge } from '@/components/ui';
 import { rows } from '@/components/home/query';
 import { VoidForm } from '@/components/forms-core';
+import { GENERAL_DOC_CATEGORIES } from '@/lib/maintenance-rules';
 import { DocumentForm } from './document-form';
 import { GeneralDocumentForm } from './general-document-form';
 
 type SP = Record<string, string | string[] | undefined>;
 type Kind = 'vehicle' | 'driver' | 'general';
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+const sanitizeSearch = (s: string) => s.replace(/[,()%]/g, ' ').trim();
+const PAGE_SIZE = 20;
 
 type DocRow = {
   id: string;
@@ -38,19 +41,19 @@ type GeneralDocRow = {
   days_left: number | null;
 };
 
-const DOC_LIMIT = 200;
-
 export default async function DocumentsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const { profile } = await requireViewer();
   const admin = isAdmin(profile);
   const i18n = await getI18n();
-  const { t } = i18n;
+  const { t, label } = i18n;
   const supabase = await createClient();
   const today = todayAddis();
 
   const tabParam = first(sp.tab);
   const kind: Kind = tabParam === 'driver' ? 'driver' : tabParam === 'general' ? 'general' : 'vehicle';
+  const page = Math.max(1, Number(first(sp.page) ?? '1') | 0 || 1);
+  const offset = (page - 1) * PAGE_SIZE;
 
   const returnTo = `/documents?tab=${kind}`;
   const tabs = [
@@ -60,12 +63,24 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   ];
 
   if (kind === 'general') {
-    const docsRes = await supabase
+    const categoryParam = first(sp.category);
+    const category = categoryParam && (GENERAL_DOC_CATEGORIES as readonly string[]).includes(categoryParam)
+      ? categoryParam
+      : undefined;
+    const q = sanitizeSearch(first(sp.q) ?? '');
+
+    let docsQuery = supabase
       .from('v_general_documents')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(DOC_LIMIT);
-    const docs = rows<GeneralDocRow>(docsRes);
+      .order('created_at', { ascending: false });
+    if (category) docsQuery = docsQuery.eq('category', category);
+    if (q) docsQuery = docsQuery.ilike('title', `%${q}%`);
+    docsQuery = docsQuery.range(offset, offset + PAGE_SIZE);
+
+    const docsRes = await docsQuery;
+    const rawDocs = rows<GeneralDocRow>(docsRes);
+    const hasMore = rawDocs.length > PAGE_SIZE;
+    const docs = hasMore ? rawDocs.slice(0, PAGE_SIZE) : rawDocs;
 
     const paths = docs.map((d) => d.file_path).filter((p): p is string => Boolean(p));
     const urlByPath = new Map<string, string>();
@@ -75,6 +90,26 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
       }
     }
+
+    const catBase = (extra: Record<string, string>) => {
+      const usp = new URLSearchParams();
+      usp.set('tab', 'general');
+      if (category) usp.set('category', category);
+      if (q) usp.set('q', q);
+      for (const [k, v] of Object.entries(extra)) {
+        if (v) usp.set(k, v);
+        else usp.delete(k);
+      }
+      return `/documents?${usp.toString()}`;
+    };
+    const catChips = [
+      { href: catBase({ category: '' }), label: t('common.all'), active: !category },
+      ...GENERAL_DOC_CATEGORIES.map((c) => ({
+        href: catBase({ category: c }),
+        label: label('generalDocCategory', c),
+        active: category === c,
+      })),
+    ];
 
     return (
       <div>
@@ -91,6 +126,30 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
           </div>
         </details>
 
+        <Chips items={catChips} />
+
+        <form method="get" action="/documents" className="mb-4 flex flex-wrap items-end gap-2">
+          <input type="hidden" name="tab" value="general" />
+          {category ? <input type="hidden" name="category" value={category} /> : null}
+          <div className="min-w-0 flex-1">
+            <label htmlFor="doc-q" className="mb-1 block text-base font-medium">{t('common.search')}</label>
+            <input
+              id="doc-q"
+              type="text"
+              name="q"
+              defaultValue={q}
+              placeholder={t('common.searchPlaceholder')}
+              className="block min-h-12 w-full rounded-xl border border-line bg-surface px-4 py-2 text-base"
+            />
+          </div>
+          <button
+            type="submit"
+            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-line bg-surface px-5 text-base font-semibold hover:bg-muted-soft"
+          >
+            {t('common.filter')}
+          </button>
+        </form>
+
         {docs.length === 0 ? (
           <EmptyState title={t('documents.generalEmpty')} hint={t('documents.generalEmptyHint')} />
         ) : (
@@ -100,9 +159,15 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
             ))}
           </div>
         )}
-        {docs.length >= DOC_LIMIT ? (
-          <p className="mt-4 text-sm text-muted">{t('documents.limitNote', { n: DOC_LIMIT })}</p>
-        ) : null}
+        <Pager
+          page={page}
+          hasMore={hasMore}
+          prevHref={page > 1 ? catBase({ page: page > 2 ? String(page - 1) : '' }) : null}
+          nextHref={catBase({ page: String(page + 1) })}
+          prevLabel={t('common.previous')}
+          nextLabel={t('common.next')}
+          pageLabel={t('common.page', { n: page })}
+        />
       </div>
     );
   }
@@ -117,7 +182,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
       .from(kind === 'vehicle' ? 'v_vehicle_documents' : 'v_driver_documents')
       .select('*')
       .order('expires_on', { ascending: true, nullsFirst: false })
-      .limit(DOC_LIMIT),
+      .range(offset, offset + PAGE_SIZE),
   ]);
 
   const owners = rows<{ id: string; name: string; plate_number?: string }>(ownersRes).map((o) => ({
@@ -125,7 +190,9 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
     label: o.plate_number ? `${o.name} · ${o.plate_number}` : o.name,
   }));
   const ownerMap = new Map(owners.map((o) => [o.id, o.label]));
-  const allDocs = rows<DocRow>(docsRes);
+  const rawAllDocs = rows<DocRow>(docsRes);
+  const hasMore = rawAllDocs.length > PAGE_SIZE;
+  const allDocs = hasMore ? rawAllDocs.slice(0, PAGE_SIZE) : rawAllDocs;
   const docs = allDocs.filter((d) => d.superseded !== true);
   const replaced = allDocs.filter((d) => d.superseded === true);
 
@@ -183,9 +250,15 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
           ) : null}
         </>
       )}
-      {allDocs.length >= DOC_LIMIT ? (
-        <p className="mt-4 text-sm text-muted">{t('documents.limitNote', { n: DOC_LIMIT })}</p>
-      ) : null}
+      <Pager
+        page={page}
+        hasMore={hasMore}
+        prevHref={page > 1 ? `${returnTo}${page > 2 ? `&page=${page - 1}` : ''}` : null}
+        nextHref={`${returnTo}&page=${page + 1}`}
+        prevLabel={t('common.previous')}
+        nextLabel={t('common.next')}
+        pageLabel={t('common.page', { n: page })}
+      />
     </div>
   );
 }

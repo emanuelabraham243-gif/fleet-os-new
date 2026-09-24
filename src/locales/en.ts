@@ -8,6 +8,8 @@ export const en = {
     plate: 'Plate number', amount: 'Amount', reason: 'Reason', open: 'Open', viewAll: 'View all',
     actions: 'Actions', demoBanner: 'Demo data. Figures shown are for demonstration only.',
     offline: 'You are offline. Changes cannot be saved right now.', filter: 'Filter', search: 'Search',
+    previous: 'Previous', next: 'Next', page: 'Page {n}', from: 'From', to: 'To', clearFilters: 'Clear filters',
+    searchPlaceholder: 'Search…',
   },
   nav: {
     home: 'Home', vehicles: 'Vehicles', trips: 'Trips', maintenance: 'Service', expenses: 'Costs',

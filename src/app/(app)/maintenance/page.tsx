@@ -7,7 +7,7 @@ import {
   MAINT_STATUS_ORDER, SERVICE_CATEGORIES, normalizeStatus, remainingKm, unknownReason,
   type MaintStatus,
 } from '@/lib/maintenance-rules';
-import { Card, Chips, EmptyState, Flash, PageHeader, Section, StatusBadge } from '@/components/ui';
+import { Card, Chips, EmptyState, Flash, PageHeader, Pager, Section, StatusBadge } from '@/components/ui';
 import { rows as unwrap } from '@/components/home/query';
 import { VoidForm } from '@/components/forms-core';
 import { ServiceForm } from './service-form';
@@ -157,6 +157,8 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
 
   const category = first(sp.category);
   const vehicleFilter = first(sp.vehicle);
+  const histPage = Math.max(1, Number(first(sp.page) ?? '1') | 0 || 1);
+  const HIST_PAGE_SIZE = 20;
 
   const [vehiclesRes, schedulesRes, catsRes] = await Promise.all([
     supabase
@@ -183,17 +185,20 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
   const activeCategory = category && catCodes.has(category) ? category : undefined;
   const activeVehicle = vehicleFilter && vehicleMap.has(vehicleFilter) ? vehicleFilter : undefined;
 
+  const histOffset = (histPage - 1) * HIST_PAGE_SIZE;
   let recQuery = supabase
     .from('service_records')
     .select('id, vehicle_id, service_date, category, description, odometer, cost, service_provider')
     .is('voided_at', null)
     .order('service_date', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(30);
+    .range(histOffset, histOffset + HIST_PAGE_SIZE);
   if (activeCategory) recQuery = recQuery.eq('category', activeCategory);
   if (activeVehicle) recQuery = recQuery.eq('vehicle_id', activeVehicle);
   const recRes = await recQuery;
-  const records = unwrap<ServiceRow>(recRes);
+  const rawRecords = unwrap<ServiceRow>(recRes);
+  const hasMoreHist = rawRecords.length > HIST_PAGE_SIZE;
+  const records = hasMoreHist ? rawRecords.slice(0, HIST_PAGE_SIZE) : rawRecords;
 
   const schedules = allSchedules.filter(
     (s) => (!activeCategory || s.service_category === activeCategory) && (!activeVehicle || s.vehicle_id === activeVehicle),
@@ -213,6 +218,14 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
 
   const vehicleOptions = vehicles.map((v) => ({ id: v.id, label: `${v.name} · ${v.plate_number}` }));
   const returnTo = hrefFor(activeCategory);
+  const histHrefFor = (p: number) => {
+    const q = new URLSearchParams();
+    if (activeCategory) q.set('category', activeCategory);
+    if (activeVehicle) q.set('vehicle', activeVehicle);
+    if (p > 1) q.set('page', String(p));
+    const s = q.toString();
+    return s ? `/maintenance?${s}` : '/maintenance';
+  };
 
   const byStatus = new Map<MaintStatus, Schedule[]>(MAINT_STATUS_ORDER.map((k) => [k, []]));
   for (const s of schedules) byStatus.get(normalizeStatus(s.overall_status))!.push(s);
@@ -354,6 +367,15 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
             })}
           </div>
         )}
+        <Pager
+          page={histPage}
+          hasMore={hasMoreHist}
+          prevHref={histPage > 1 ? histHrefFor(histPage - 1) : null}
+          nextHref={histHrefFor(histPage + 1)}
+          prevLabel={t('common.previous')}
+          nextLabel={t('common.next')}
+          pageLabel={t('common.page', { n: histPage })}
+        />
       </Section>
     </div>
   );

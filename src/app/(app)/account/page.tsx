@@ -1,11 +1,12 @@
-import { requireViewer } from '@/lib/auth';
+import { isAdmin, requireViewer } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
-import { Card, PageHeader, Section } from '@/components/ui';
+import { Card, LinkButton, PageHeader, Section } from '@/components/ui';
 import { LanguageToggle, SignOutButton } from '@/components/shell-controls';
 import { PasswordForm } from './password-form';
 
 export default async function AccountPage() {
   const { user, profile } = await requireViewer();
+  const admin = isAdmin(profile);
   const { t, label, locale } = await getI18n();
 
   return (
@@ -39,6 +40,11 @@ export default async function AccountPage() {
           <PasswordForm />
         </Card>
       </Section>
+      {admin ? (
+        <div className="mb-6">
+          <LinkButton href="/audit" variant="secondary">{t('audit.title')}</LinkButton>
+        </div>
+      ) : null}
       <SignOutButton />
     </>
   );

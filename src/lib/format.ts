@@ -55,6 +55,14 @@ export function formatDate(iso: string | null | undefined, locale: Locale): stri
   }).format(d);
 }
 
+/** 'YYYY-MM' -> localized "Month Year" (e.g. "Mar 2026"). */
+export function formatMonth(ym: string, locale: Locale): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(ym);
+  if (!m) return DASH;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1));
+  return new Intl.DateTimeFormat(intlLocale(locale), { timeZone: 'UTC', year: 'numeric', month: 'short' }).format(d);
+}
+
 export function formatDateTime(iso: string | null | undefined, locale: Locale): string {
   if (!iso) return DASH;
   const d = new Date(iso);

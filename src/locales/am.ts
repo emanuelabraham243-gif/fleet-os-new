@@ -11,6 +11,8 @@ export const am: Widen<typeof en> = {
     plate: 'ታርጋ ቁጥር', amount: 'መጠን', reason: 'ምክንያት', open: 'ክፈት', viewAll: 'ሁሉንም ይመልከቱ',
     actions: 'እርምጃዎች', demoBanner: 'የማሳያ መረጃ ነው። የሚታዩት ቁጥሮች ለማሳያ ብቻ ናቸው።',
     offline: 'ከኢንተርኔት ውጭ ነዎት። አሁን ለውጦችን ማስቀመጥ አይቻልም።', filter: 'አጣራ', search: 'ፈልግ',
+    previous: 'የቀድሞ', next: 'ቀጣይ', page: 'ገጽ {n}', from: 'ከ', to: 'እስከ', clearFilters: 'ማጣሪያዎችን አጽዳ',
+    searchPlaceholder: 'ይፈልጉ…',
   },
   nav: {
     home: 'ዋና', vehicles: 'ተሽከርካሪ', trips: 'ጉዞ', maintenance: 'ጥገና', expenses: 'ወጪ',
