@@ -10,6 +10,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Self-contained server.js + traced node_modules in .next/standalone, for Node hosting
+  // (Spaceship cPanel "Setup Node.js App"). See scripts/package-spaceship.mjs.
+  output: "standalone",
   // OpenCV.js (document scanner) has Node-only require("fs"/"path"/"crypto") branches that never
   // run in the browser; give the browser bundle an empty module instead of failing to resolve.
   turbopack: {

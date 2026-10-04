@@ -43,3 +43,6 @@ next-env.d.ts
 # allow the env template; keep local MCP config (contains a token) out of git
 !.env.example
 .mcp.json
+
+# Spaceship hosting bundle (npm run package:spaceship)
+/dist
