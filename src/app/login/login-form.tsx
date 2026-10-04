@@ -59,7 +59,17 @@ export function LoginForm() {
   );
 }
 
-function PasswordInput({ label, fieldError }: { label: string; fieldError?: string }) {
+export function PasswordInput({
+  label,
+  fieldError,
+  autoComplete = 'current-password',
+  hint,
+}: {
+  label: string;
+  fieldError?: string;
+  autoComplete?: 'current-password' | 'new-password';
+  hint?: string;
+}) {
   const { t } = useI18n();
   const id = useId();
   return (
@@ -72,11 +82,16 @@ function PasswordInput({ label, fieldError }: { label: string; fieldError?: stri
         name="password"
         type="password"
         required
-        autoComplete="current-password"
+        autoComplete={autoComplete}
         aria-invalid={fieldError ? true : undefined}
-        aria-describedby={fieldError ? `${id}-err` : undefined}
+        aria-describedby={[fieldError ? `${id}-err` : '', hint ? `${id}-hint` : ''].join(' ').trim() || undefined}
         className="block min-h-12 w-full rounded-xl border border-input-border bg-surface px-4 py-2 text-base"
       />
+      {hint ? (
+        <p id={`${id}-hint`} className="mt-1 text-sm text-muted">
+          {hint}
+        </p>
+      ) : null}
       {fieldError ? (
         <p id={`${id}-err`} role="alert" className="mt-1 text-sm font-medium text-bad-ink">
           {t(fieldError.includes('.') ? fieldError : 'errors.' + fieldError)}

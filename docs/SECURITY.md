@@ -9,7 +9,19 @@
 - A profile is only ever created by the `handle_new_user()` trigger, which
   reads `organization_id`/`role` from `raw_app_meta_data` — never from
   `raw_user_meta_data`, which the user themselves can edit. A user cannot
-  self-assign an organization or an admin role.
+  join an existing organization or give themselves a role in one.
+- Public sign-up is off (revision pass 5). There is no `/signup` page, and
+  `handle_new_user()` raises for any new `auth.users` row without
+  `app_metadata.organization_id` (`20261004000001_disable_self_signup.sql`),
+  so a sign-up made directly against the Supabase Auth API with the
+  publishable key is rejected too and creates nothing. New accounts are
+  provisioned by an admin in the Supabase dashboard with
+  `app_metadata.organization_id` (and optionally `role`).
+- `scripts/verify-org-isolation.mjs` checks isolation live, as two real
+  signed-in users through the public API (no service-role key): each sees
+  only its own organization's rows, and reading/updating the other's rows by
+  exact id, inserting into the other organization, and listing/downloading
+  its stored files are all refused.
 - Two roles: `admin`, `staff`. `isAdmin(profile)` gates admin-only UI
   (voiding records, adding/editing vehicles, drivers, and maintenance
   schedules); the real enforcement is server-side, in RLS.

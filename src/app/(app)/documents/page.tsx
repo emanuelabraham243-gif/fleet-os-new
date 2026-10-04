@@ -8,6 +8,8 @@ import { VoidForm } from '@/components/forms-core';
 import { GENERAL_DOC_CATEGORIES } from '@/lib/maintenance-rules';
 import { DocumentForm } from './document-form';
 import { GeneralDocumentForm } from './general-document-form';
+import { CaptureDocumentForm } from './capture-document-form';
+import { DocFileActions } from './doc-file-actions';
 
 type SP = Record<string, string | string[] | undefined>;
 type Kind = 'vehicle' | 'driver' | 'general';
@@ -24,6 +26,8 @@ type DocRow = {
   issued_on: string | null;
   expires_on: string | null;
   file_path: string | null;
+  original_file_path?: string | null;
+  title?: string | null;
   status: string | null;
   days_left: number | null;
   superseded?: boolean | null;
@@ -37,6 +41,7 @@ type GeneralDocRow = {
   issued_on: string | null;
   expires_on: string | null;
   file_path: string | null;
+  original_file_path?: string | null;
   status: string | null;
   days_left: number | null;
 };
@@ -82,7 +87,9 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
     const hasMore = rawDocs.length > PAGE_SIZE;
     const docs = hasMore ? rawDocs.slice(0, PAGE_SIZE) : rawDocs;
 
-    const paths = docs.map((d) => d.file_path).filter((p): p is string => Boolean(p));
+    const paths = docs
+      .flatMap((d) => [d.file_path, d.original_file_path])
+      .filter((p): p is string => Boolean(p));
     const urlByPath = new Map<string, string>();
     if (paths.length > 0) {
       const { data: signed } = await supabase.storage.from('documents').createSignedUrls(paths, 300);
@@ -126,6 +133,15 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
           </div>
         </details>
 
+        <details className="mb-6 rounded-2xl border border-line bg-surface p-4">
+          <summary className="flex min-h-12 cursor-pointer items-center text-lg font-semibold">
+            {t('capture.button')}
+          </summary>
+          <div className="mt-3">
+            <CaptureDocumentForm kind="general" today={today} />
+          </div>
+        </details>
+
         <Chips items={catChips} />
 
         <form method="get" action="/documents" className="mb-4 flex flex-wrap items-end gap-2">
@@ -155,7 +171,15 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         ) : (
           <div className="space-y-3">
             {docs.map((d) => (
-              <GeneralDocCard key={d.id} d={d} i18n={i18n} url={d.file_path ? urlByPath.get(d.file_path) : undefined} admin={admin} returnTo={returnTo} />
+              <GeneralDocCard
+                key={d.id}
+                d={d}
+                i18n={i18n}
+                url={d.file_path ? urlByPath.get(d.file_path) : undefined}
+                originalUrl={d.original_file_path ? urlByPath.get(d.original_file_path) : undefined}
+                admin={admin}
+                returnTo={returnTo}
+              />
             ))}
           </div>
         )}
@@ -197,7 +221,9 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   const replaced = allDocs.filter((d) => d.superseded === true);
 
   // One batched call; signed URLs are short-lived (5 minutes) and never stored.
-  const paths = allDocs.map((d) => d.file_path).filter((p): p is string => Boolean(p));
+  const paths = allDocs
+    .flatMap((d) => [d.file_path, d.original_file_path])
+    .filter((p): p is string => Boolean(p));
   const urlByPath = new Map<string, string>();
   if (paths.length > 0) {
     const { data: signed } = await supabase.storage.from('documents').createSignedUrls(paths, 300);
@@ -223,6 +249,19 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
             <p className="text-base text-muted">{t('documents.noOwners')}</p>
           ) : (
             <DocumentForm key={kind} kind={kind} owners={owners} today={today} />
+          )}
+        </div>
+      </details>
+
+      <details className="mb-6 rounded-2xl border border-line bg-surface p-4">
+        <summary className="flex min-h-12 cursor-pointer items-center text-lg font-semibold">
+          {t('capture.button')}
+        </summary>
+        <div className="mt-3">
+          {owners.length === 0 ? (
+            <p className="text-base text-muted">{t('documents.noOwners')}</p>
+          ) : (
+            <CaptureDocumentForm key={kind} kind={kind} owners={owners} today={today} />
           )}
         </div>
       </details>
@@ -277,6 +316,8 @@ function DocCard({ d, ctx, muted = false }: { d: DocRow; ctx: Ctx; muted?: boole
   const { t, label, locale } = ctx.i18n;
   const ownerId = d[ctx.ownerKey];
   const url = d.file_path ? ctx.urlByPath.get(d.file_path) : undefined;
+  const originalUrl = d.original_file_path ? ctx.urlByPath.get(d.original_file_path) : undefined;
+  const table = ctx.kind === 'vehicle' ? 'vehicle_documents' : 'driver_documents';
   const status = d.status ?? 'UNKNOWN';
   const n = d.days_left;
   return (
@@ -286,6 +327,7 @@ function DocCard({ d, ctx, muted = false }: { d: DocRow; ctx: Ctx; muted?: boole
           <p className={`text-lg font-semibold leading-snug ${muted ? 'text-muted' : ''}`}>
             {label('documentType', d.document_type)}
           </p>
+          {d.title ? <p className="text-base font-medium">{d.title}</p> : null}
           <p className="text-base text-muted">{ownerId ? (ctx.ownerMap.get(ownerId) ?? '') : ''}</p>
         </div>
         {muted ? <Badge tone="gray">{t('documents.replacedBadge')}</Badge> : <StatusBadge group="docStatus" code={status} />}
@@ -341,6 +383,17 @@ function DocCard({ d, ctx, muted = false }: { d: DocRow; ctx: Ctx; muted?: boole
         ) : (
           <p className="text-sm text-muted">{t('documents.noFile')}</p>
         )}
+        {d.file_path ? <DocFileActions table={table} id={d.id} path={d.file_path} name={d.title ?? label('documentType', d.document_type)} /> : null}
+        {originalUrl ? (
+          <a
+            href={originalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 py-2 text-base font-medium text-muted underline hover:bg-muted-soft"
+          >
+            {t('docFile.viewOriginal')}
+          </a>
+        ) : null}
         {ctx.admin ? (
           <VoidForm
             table={ctx.kind === 'vehicle' ? 'vehicle_documents' : 'driver_documents'}
@@ -354,11 +407,12 @@ function DocCard({ d, ctx, muted = false }: { d: DocRow; ctx: Ctx; muted?: boole
 }
 
 function GeneralDocCard({
-  d, i18n, url, admin, returnTo,
+  d, i18n, url, originalUrl, admin, returnTo,
 }: {
   d: GeneralDocRow;
   i18n: I18n;
   url: string | undefined;
+  originalUrl: string | undefined;
   admin: boolean;
   returnTo: string;
 }) {
@@ -425,6 +479,17 @@ function GeneralDocCard({
         ) : (
           <p className="text-sm text-muted">{t('documents.noFile')}</p>
         )}
+        {d.file_path ? <DocFileActions table={'general_documents'} id={d.id} path={d.file_path} name={d.title} /> : null}
+        {originalUrl ? (
+          <a
+            href={originalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 py-2 text-base font-medium text-muted underline hover:bg-muted-soft"
+          >
+            {t('docFile.viewOriginal')}
+          </a>
+        ) : null}
         {admin ? <VoidForm table="general_documents" id={d.id} returnTo={returnTo} /> : null}
       </div>
     </Card>

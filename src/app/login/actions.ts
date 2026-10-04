@@ -36,7 +36,7 @@ export async function signInWithPassword(_prev: FormState, fd: FormData): Promis
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error || !data.user) return { error: 'invalidCreds', values };
+  if (error || !data.user) return { error: 'auth.invalidCreds', values };
 
   const { data: profile } = await supabase
     .from('profiles')

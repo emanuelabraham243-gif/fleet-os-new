@@ -10,6 +10,15 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // OpenCV.js (document scanner) has Node-only require("fs"/"path"/"crypto") branches that never
+  // run in the browser; give the browser bundle an empty module instead of failing to resolve.
+  turbopack: {
+    resolveAlias: {
+      fs: { browser: './src/lib/empty-module.ts' },
+      path: { browser: './src/lib/empty-module.ts' },
+      crypto: { browser: './src/lib/empty-module.ts' },
+    },
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "12mb",
