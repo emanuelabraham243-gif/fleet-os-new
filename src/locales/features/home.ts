@@ -25,10 +25,6 @@ export const en = {
     upcomingEmpty: 'No pending reminders',
     quickTitle: 'Quick actions',
     quick: { fuel: 'Record fuel', trip: 'New trip', incident: 'Report an issue' },
-    gpsTitle: 'GPS (optional)',
-    gpsOptionalNote: 'This section is optional and not required to use FleetOS.',
-    gpsPosition: 'Coordinates',
-    gpsNoPosition: 'Current position is not shown.',
   },
   vehicles: {
     title: 'Vehicles',
@@ -136,10 +132,6 @@ export const am: Widen<typeof en> = {
     upcomingEmpty: 'በመጠባበቅ ላይ ያለ ማሳሰቢያ የለም',
     quickTitle: 'ፈጣን እርምጃዎች',
     quick: { fuel: 'ነዳጅ መዝግብ', trip: 'አዲስ ጉዞ', incident: 'ችግር ሪፖርት አድርግ' },
-    gpsTitle: 'GPS (አማራጭ)',
-    gpsOptionalNote: 'ይህ ክፍል አማራጭ ነው፤ FleetOSን ለመጠቀም አያስፈልግም።',
-    gpsPosition: 'መጋጠሚያ',
-    gpsNoPosition: 'የአሁኑ ቦታ አይታይም።',
   },
   vehicles: {
     title: 'ተሽከርካሪዎች',
