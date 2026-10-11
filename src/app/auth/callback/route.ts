@@ -4,7 +4,9 @@ import { LANG_COOKIE, isLocale } from '@/lib/i18n-core';
 import { safeReturnTo } from '@/lib/action-helpers';
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl;
+  const { searchParams } = request.nextUrl;
+  // Behind the cPanel proxy, nextUrl.origin is the internal bind address (0.0.0.0:3000).
+  const origin = process.env.SITE_URL?.trim().replace(/\/+$/, '') || request.nextUrl.origin;
   const code = searchParams.get('code');
   const dest = safeReturnTo(searchParams.get('next'), '/');
 
