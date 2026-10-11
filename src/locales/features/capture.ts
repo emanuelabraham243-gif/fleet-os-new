@@ -12,6 +12,8 @@ export const en = {
     detected: 'Edges found: the page was straightened, cropped and cleaned up.',
     notDetected: 'The page edges were not found, so the whole photo was cleaned up. You can take it again.',
     failed: 'The photo could not be processed. Please try again.',
+    blurry:
+      'This photo looks blurry and the text may be hard to read. Hold the phone steady, in good light, and tap "Take again". You can still save it as it is.',
     cleanedLabel: 'Cleaned-up version (this is what is saved and shown)',
     originalLabel: 'Original photo (also kept)',
     name: 'Name',
@@ -40,6 +42,8 @@ export const am: Widen<typeof en> = {
     detected: 'ጠርዞቹ ተገኝተዋል፦ ገጹ ተቃንቶ፣ ተቆርጦና ጠርቶ ተዘጋጅቷል።',
     notDetected: 'የገጹ ጠርዞች አልተገኙም፣ ስለዚህ ሙሉው ፎቶ ጠርቷል። እንደገና ማንሳት ይችላሉ።',
     failed: 'ፎቶውን ማስተካከል አልተቻለም። እባክዎ እንደገና ይሞክሩ።',
+    blurry:
+      'ይህ ፎቶ የደበዘዘ ይመስላል፣ ጽሑፉም በቀላሉ ላይነበብ ይችላል። ስልኩን ሳያንቀሳቅሱ በጥሩ ብርሃን ይያዙና "እንደገና አንሳ" ይጫኑ። እንዳለ ማስቀመጥም ይችላሉ።',
     cleanedLabel: 'የጠራው ቅጂ (የሚቀመጠውና የሚታየው ይህ ነው)',
     originalLabel: 'ዋናው ፎቶ (እሱም ይቀመጣል)',
     name: 'ስም',

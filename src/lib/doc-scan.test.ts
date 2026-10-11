@@ -1,7 +1,10 @@
 import { createRequire } from 'node:module';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type * as OpenCv from '@techstark/opencv-js';
-import { orderCorners, readyOpenCv, scanDocument, type CV, type Point, type RgbaImage } from './doc-scan';
+import {
+  BLUR_THRESHOLD, measureSharpness, orderCorners, readyOpenCv, scanDocument,
+  type CV, type Point, type RgbaImage,
+} from './doc-scan';
 
 let cv: CV;
 beforeAll(async () => {
@@ -133,5 +136,48 @@ describe('scanDocument', () => {
     expect(scan.width).toBe(w);
     expect(scan.height).toBe(h);
     expect(scan.data.length).toBe(w * h * 4);
+    // No text to judge, so it must not nag about blur.
+    expect(scan.sharpness).toBeNull();
+    expect(scan.blurry).toBe(false);
   });
+});
+
+describe('measureSharpness', () => {
+  /** A page of small printed text, optionally Gaussian-blurred and with sensor-like grain. */
+  function textPage(sigma: number, grain = 0): OpenCv.Mat {
+    const page = new cv.Mat(1600, 1200, cv.CV_8UC4, new cv.Scalar(225, 222, 215, 255));
+    for (let y = 80; y < 1550; y += 30) {
+      cv.putText(page, 'Invoice No 48213 Plate AA-3-B2291 Total 12,450.00', new cv.Point(40, y),
+        cv.FONT_HERSHEY_SIMPLEX, 0.5, new cv.Scalar(40, 40, 40, 255), 1, cv.LINE_AA);
+    }
+    if (sigma > 0) cv.GaussianBlur(page, page, new cv.Size(0, 0), sigma);
+    const d = page.data;
+    for (let i = 0; grain && i < d.length; i += 4) {
+      const n = (((i * 2654435761) % 1000) / 1000) * 2 * grain - grain;
+      for (let c = 0; c < 3; c++) d[i + c] = Math.max(0, Math.min(255, d[i + c] + n));
+    }
+    return page;
+  }
+
+  const score = (sigma: number, grain = 0) => {
+    const page = textPage(sigma, grain);
+    try {
+      return measureSharpness(cv, page)!;
+    } finally {
+      page.delete();
+    }
+  };
+
+  it('passes sharp and slightly soft text, flags clearly blurred text', () => {
+    expect(score(0)).toBeGreaterThan(BLUR_THRESHOLD);
+    expect(score(1.8)).toBeGreaterThan(BLUR_THRESHOLD);
+    expect(score(2.5)).toBeLessThan(BLUR_THRESHOLD);
+    expect(score(5)).toBeLessThan(BLUR_THRESHOLD);
+  }, 30_000);
+
+  it('does not let grain make a blurred page look sharp', () => {
+    expect(score(2.5, 8)).toBeLessThan(BLUR_THRESHOLD);
+    expect(score(5, 8)).toBeLessThan(BLUR_THRESHOLD);
+    expect(score(0, 8)).toBeGreaterThan(BLUR_THRESHOLD);
+  }, 30_000);
 });

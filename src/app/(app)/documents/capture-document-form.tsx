@@ -15,7 +15,14 @@ const ORIGINAL_MAX_SIDE = 3000;
 const MAX_TOTAL_BYTES = 5.5 * 1024 * 1024;
 
 type Phase = 'idle' | 'preparing' | 'processing' | 'ready' | 'failed';
-type Captured = { scan: File; original: File; scanUrl: string; originalUrl: string; detected: boolean };
+type Captured = {
+  scan: File;
+  original: File;
+  scanUrl: string;
+  originalUrl: string;
+  detected: boolean;
+  blurry: boolean;
+};
 
 const toJpeg = (canvas: HTMLCanvasElement, quality: number) =>
   new Promise<Blob>((resolve, reject) =>
@@ -64,6 +71,7 @@ async function processPhoto(file: File, onPreparing: () => void): Promise<Omit<C
     scan: new File([scanBlob], 'scan.jpg', { type: 'image/jpeg' }),
     original: new File([originalBlob], 'original.jpg', { type: 'image/jpeg' }),
     detected: result.corners !== null,
+    blurry: result.blurry,
   };
 }
 
@@ -167,6 +175,12 @@ export function CaptureDocumentForm({
         {phase === 'ready' && captured ? (
           <p className={`mb-3 text-base ${captured.detected ? '' : 'text-warn-ink'}`}>
             {captured.detected ? t('capture.detected') : t('capture.notDetected')}
+          </p>
+        ) : null}
+        {/* A warning, not a block: some phone cameras never get sharper, and the photo is still worth keeping. */}
+        {phase === 'ready' && captured?.blurry ? (
+          <p className="mb-3 rounded-xl bg-warn-soft px-4 py-3 text-base font-medium text-warn-ink">
+            {t('capture.blurry')}
           </p>
         ) : null}
       </div>

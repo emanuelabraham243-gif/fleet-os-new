@@ -14,6 +14,10 @@ export type Point = { x: number; y: number };
 export type ScanResult = RgbaImage & {
   /** Detected paper corners in input-image pixels (tl, tr, br, bl), or null if none was found. */
   corners: Point[] | null;
+  /** measureSharpness() of the flattened page before cleanup, or null if it has too little text to judge. */
+  sharpness: number | null;
+  /** True when the photo is likely too blurry to read: worth retaking (or, later, AI deblurring). */
+  blurry: boolean;
 };
 
 /** Longest side of the saved scan. Keeps text crisp while keeping uploads small. */
@@ -21,6 +25,15 @@ export const MAX_SCAN_SIDE = 2400;
 const DETECT_SIDE = 800; // edge detection runs on a downscaled copy
 const LIGHTING_SIDE = 600; // background (lighting) estimate runs on a downscaled copy
 const MIN_DOC_AREA = 0.2; // a detected quad must cover at least 20% of the photo
+const SHARPNESS_SIDE = 1200; // sharpness is judged at a fixed size so phone resolution doesn't skew it
+const SHARPNESS_TILE = 100;
+const MIN_TILE_CONTRAST = 12; // grey-level std dev: below this a tile is blank paper, not text
+const MIN_TEXT_TILES = 3;
+/**
+ * Pages scoring below this are flagged as blurry. On synthetic text it passes Gaussian blur up to
+ * sigma 1.8 (still readable, scores >= 0.24) and flags sigma 2.5+ (<= 0.18). Retune with real photos.
+ */
+export const BLUR_THRESHOLD = 0.2;
 
 /**
  * Loads OpenCV.js once. The ~10 MB module is only fetched when this is called
@@ -74,6 +87,12 @@ function polygonArea(p: Point[]): number {
     s += a.x * b.y - b.x * a.y;
   }
   return Math.abs(s) / 2;
+}
+
+function median(xs: number[]): number | null {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
 }
 
 function toMat(cv: CV, img: RgbaImage): Mat {
@@ -257,6 +276,54 @@ export function enhance(cv: CV, rgba: Mat): Mat {
 }
 
 /**
+ * How sharp the text on a page is. Per tile: std dev of the Laplacian (fine detail) divided by
+ * the std dev of the grey levels (overall contrast), so lighting, ink darkness and how much text
+ * a tile holds mostly cancel out and blur is what's left. Blank tiles are skipped; the median of
+ * the text tiles is returned, or null when there is too little text to judge.
+ */
+export function measureSharpness(cv: CV, rgba: Mat): number | null {
+  const { mat: small } = resizeToLongSide(cv, rgba, SHARPNESS_SIDE);
+  const gray = new cv.Mat();
+  const lap = new cv.Mat();
+  const mean = new cv.Mat();
+  const std = new cv.Mat();
+  try {
+    cv.cvtColor(small, gray, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(gray, gray, new cv.Size(3, 3), 0); // keep sensor/JPEG noise from reading as detail
+    cv.Laplacian(gray, lap, cv.CV_32F);
+    const text: { detail: number; contrast: number }[] = [];
+    const blankDetail: number[] = [];
+    for (let y = 0; y + SHARPNESS_TILE <= gray.rows; y += SHARPNESS_TILE) {
+      for (let x = 0; x + SHARPNESS_TILE <= gray.cols; x += SHARPNESS_TILE) {
+        const rect = new cv.Rect(x, y, SHARPNESS_TILE, SHARPNESS_TILE);
+        const g = gray.roi(rect);
+        const l = lap.roi(rect);
+        try {
+          cv.meanStdDev(g, mean, std);
+          const contrast = std.doubleAt(0, 0);
+          cv.meanStdDev(l, mean, std);
+          if (contrast < MIN_TILE_CONTRAST) blankDetail.push(std.doubleAt(0, 0));
+          else text.push({ detail: std.doubleAt(0, 0), contrast });
+        } finally {
+          g.delete();
+          l.delete();
+        }
+      }
+    }
+    if (text.length < MIN_TEXT_TILES) return null;
+    // Grain on blank paper is the noise floor; removing it stops a noisy blurry photo passing as sharp.
+    const noise = median(blankDetail) ?? 0;
+    return median(text.map((t) => Math.sqrt(Math.max(0, t.detail ** 2 - noise ** 2)) / t.contrast));
+  } finally {
+    small.delete();
+    gray.delete();
+    lap.delete();
+    mean.delete();
+    std.delete();
+  }
+}
+
+/**
  * Full scan: detect -> deskew/crop -> clean up. If no document outline is found the
  * whole photo is kept (only resized and cleaned up), so a capture never fails outright.
  */
@@ -267,12 +334,16 @@ export function scanDocument(cv: CV, img: RgbaImage): ScanResult {
   try {
     const corners = detectCorners(cv, src);
     flat = corners ? warp(cv, src, corners) : resizeToLongSide(cv, src, MAX_SCAN_SIDE).mat;
+    // Judged before enhance(): its sharpening would make every photo look crisper than it is.
+    const sharpness = measureSharpness(cv, flat);
     cleaned = enhance(cv, flat);
     return {
       data: new Uint8ClampedArray(cleaned.data),
       width: cleaned.cols,
       height: cleaned.rows,
       corners,
+      sharpness,
+      blurry: sharpness !== null && sharpness < BLUR_THRESHOLD,
     };
   } finally {
     src.delete();
