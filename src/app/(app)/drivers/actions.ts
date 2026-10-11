@@ -8,7 +8,7 @@ import { requireViewer, isAdmin } from '@/lib/auth';
 import { formValues, mapDbError, type FormState } from '@/lib/action-helpers';
 import { fieldErrorsFromZod, zChoice, zDate, zOptionalText, zText, zUuid } from '@/lib/schemas';
 
-const DRIVER_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
+const DRIVER_STATUSES = ['ACTIVE', 'PENDING', 'INACTIVE'] as const;
 const emptyToUndef = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
 
 const driverSchema = z.object({

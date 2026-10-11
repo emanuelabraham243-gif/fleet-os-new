@@ -77,8 +77,9 @@ const GREEN = new Set(['VALID', 'OK', 'LIVE', 'COMPLETED', 'AVAILABLE', 'CLOSED'
 const BLUE = new Set(['ON_TRIP', 'IN_PROGRESS', 'OPEN', 'SCHEDULED']);
 
 export function statusTone(group: string, code: string): Tone {
-  void group;
   const c = code.toUpperCase();
+  // A pending driver still needs details; other groups' PENDING (reminders) stays neutral.
+  if (group === 'driverStatus' && c === 'PENDING') return 'amber';
   if (RED.has(c)) return 'red';
   if (AMBER.has(c)) return 'amber';
   if (GREEN.has(c)) return 'green';

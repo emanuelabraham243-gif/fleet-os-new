@@ -6,7 +6,7 @@ import {
 import { useI18n } from '@/lib/i18n-client';
 import { createDriver, updateDriver } from './actions';
 
-const STATUSES = ['ACTIVE', 'INACTIVE'] as const;
+const STATUSES = ['ACTIVE', 'PENDING', 'INACTIVE'] as const;
 
 export function DriverForm({
   driver,

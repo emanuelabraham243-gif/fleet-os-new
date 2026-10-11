@@ -55,7 +55,7 @@ export const en = {
     },
     generalDocCategory: { FAMILY: 'Family', SCHOOL: 'School', PERSONAL: 'Personal', OTHER: 'Other' },
     incidentStatus: { OPEN: 'Open', REVIEWED: 'Reviewed', CLOSED: 'Closed' },
-    driverStatus: { ACTIVE: 'Active', INACTIVE: 'Inactive' },
+    driverStatus: { ACTIVE: 'Active', PENDING: 'Pending', INACTIVE: 'Inactive' },
     role: { admin: 'Administrator', staff: 'Staff' },
     priority: { low: 'Low', normal: 'Normal', high: 'High' },
   },

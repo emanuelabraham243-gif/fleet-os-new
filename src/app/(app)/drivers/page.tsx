@@ -25,17 +25,24 @@ export default async function DriversPage({ searchParams }: { searchParams: SP }
   const { t, locale } = await getI18n();
   const supabase = await createClient();
 
+  // Pending slots first: they are the ones still waiting for details.
   const drivers = rows<Driver>(
     await supabase
       .from('drivers')
       .select('id, name, phone, license_number, license_expiry, status, notes')
       .order('name'),
-  );
+  ).sort((a, b) => Number(b.status === 'PENDING') - Number(a.status === 'PENDING'));
+  const pending = drivers.filter((d) => d.status === 'PENDING').length;
 
   return (
     <div>
       <PageHeader title={t('drivers.title')} />
       <Flash saved={sp.saved} error={sp.error} />
+      {pending > 0 ? (
+        <p className="mb-4 rounded-2xl border border-line bg-surface p-4 text-base">
+          {t('drivers.pendingCount', { n: pending })}
+        </p>
+      ) : null}
 
       {admin ? (
         <details className="mb-4 rounded-2xl border border-line bg-surface p-4">

@@ -58,7 +58,7 @@ export const am: Widen<typeof en> = {
     },
     generalDocCategory: { FAMILY: 'የቤተሰብ', SCHOOL: 'የትምህርት ቤት', PERSONAL: 'የግል', OTHER: 'ሌላ' },
     incidentStatus: { OPEN: 'ክፍት', REVIEWED: 'የተገመገመ', CLOSED: 'የተዘጋ' },
-    driverStatus: { ACTIVE: 'ንቁ', INACTIVE: 'ንቁ ያልሆነ' },
+    driverStatus: { ACTIVE: 'ንቁ', PENDING: 'በመጠባበቅ ላይ', INACTIVE: 'ንቁ ያልሆነ' },
     role: { admin: 'አስተዳዳሪ', staff: 'ሠራተኛ' },
     priority: { low: 'ዝቅተኛ', normal: 'መደበኛ', high: 'ከፍተኛ' },
   },

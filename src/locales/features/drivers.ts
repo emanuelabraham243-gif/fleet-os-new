@@ -6,6 +6,7 @@ export const en = {
     empty: 'No drivers yet',
     emptyHint: 'Drivers you add will appear here.',
     addDriver: 'Add driver',
+    pendingCount: '{n} drivers are pending - open Edit to fill in their details.',
     form: {
       name: 'Full name',
       phone: 'Phone',
@@ -21,6 +22,7 @@ export const am: Widen<typeof en> = {
     empty: 'እስካሁን አሽከርካሪ የለም',
     emptyHint: 'የሚጨምሯቸው አሽከርካሪዎች እዚህ ይታያሉ።',
     addDriver: 'አሽከርካሪ ጨምር',
+    pendingCount: '{n} አሽከርካሪዎች በመጠባበቅ ላይ ናቸው - ዝርዝራቸውን ለመሙላት «አስተካክል» ይክፈቱ።',
     form: {
       name: 'ሙሉ ስም',
       phone: 'ስልክ',
