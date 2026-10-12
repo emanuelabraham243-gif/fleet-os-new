@@ -22,16 +22,20 @@ export function ExpenseForm({
   trips,
   defaultTrip,
   today,
+  returnHome,
 }: {
   trips: { value: string; label: string }[];
   defaultTrip?: string;
   today: string;
+  /** Opened from the home page: go back there after saving. */
+  returnHome?: boolean;
 }) {
   const { t, label } = useI18n();
   const { state, formAction } = useFormAction(createExpense);
   return (
     <form action={formAction} noValidate>
       <FormMessage state={state} />
+      {returnHome ? <input type="hidden" name="returnTo" value="home" /> : null}
       <SelectField
         name="trip_id"
         label={t('expenses.tripLabel')}

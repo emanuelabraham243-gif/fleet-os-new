@@ -9,6 +9,9 @@ export const en = {
     noVehiclesHint: 'Vehicles added to your fleet will appear here.',
     driverLabel: 'Driver',
     attentionTitle: 'Attention required',
+    activeTrips: 'Trips on the road',
+    addExpense: '+ Add expense',
+    expensesSoFar: 'Expenses so far',
     attentionEmpty: 'Nothing needs attention right now',
     attentionEmptyHint: 'Documents, maintenance and open issues are all up to date.',
     attention: {
@@ -116,6 +119,9 @@ export const am: Widen<typeof en> = {
     noVehiclesHint: 'ወደ ድርጅትዎ የሚጨመሩ ተሽከርካሪዎች እዚህ ይታያሉ።',
     driverLabel: 'አሽከርካሪ',
     attentionTitle: 'ትኩረት የሚሹ ጉዳዮች',
+    activeTrips: 'በጉዞ ላይ ያሉ መኪኖች',
+    addExpense: '+ ወጪ ጨምር',
+    expensesSoFar: 'እስካሁን ያለ ወጪ',
     attentionEmpty: 'አሁን ትኩረት የሚሻ ነገር የለም',
     attentionEmptyHint: 'ሰነዶች፣ ጥገናዎችና ክፍት ጉዳዮች ሁሉም በሥርዓት ናቸው።',
     attention: {

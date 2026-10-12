@@ -302,7 +302,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
             {t('expenses.add')}
           </summary>
           <div className="mt-3">
-            <ExpenseForm trips={tripOptions} defaultTrip={tripFilter} today={today} />
+            <ExpenseForm trips={tripOptions} defaultTrip={tripFilter} today={today} returnHome={first(sp.from) === 'home'} />
           </div>
         </details>
       ) : null}

@@ -89,6 +89,9 @@ export async function createExpense(_prev: FormState, fd: FormData): Promise<For
 
   revalidatePath('/expenses');
   revalidatePath('/trips');
+  revalidatePath('/');
+  // Only a fixed target is accepted, never a URL from the form.
+  if (raw.returnTo === 'home') redirect('/?saved=1');
   redirect(`/expenses?trip=${d.trip_id}&saved=1`);
 }
 

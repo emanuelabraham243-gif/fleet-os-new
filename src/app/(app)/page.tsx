@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { requireViewer } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
-import { todayAddis, formatDate, formatNumber } from '@/lib/format';
+import { todayAddis, formatDate, formatEtb, formatNumber } from '@/lib/format';
+import { toCents } from '@/lib/money';
 import { currentTripByVehicle, fleetCounts } from '@/lib/vehicle-file';
-import { Badge, Card, EmptyState, PageHeader, Section, StatusBadge } from '@/components/ui';
+import { Badge, Card, EmptyState, Flash, PageHeader, Section, StatusBadge } from '@/components/ui';
 import { buildAttention, attentionCutoff } from '@/components/home/attention';
 import { priorityTone, reminderText } from '@/components/home/reminder-text';
 import { rows } from '@/components/home/query';
@@ -15,15 +16,18 @@ type Driver = { id: string; name: string; status: string; license_expiry: string
 
 const ATTENTION_REMINDERS = ['MISSING_FUEL_RECORD', 'MISSING_TRIP_REVENUE', 'STALE_TRIP'];
 
-export default async function HomePage() {
+type SP = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function HomePage({ searchParams }: { searchParams: SP }) {
   await requireViewer();
+  const sp = await searchParams;
   const i18n = await getI18n();
   const { t, label, locale } = i18n;
   const supabase = await createClient();
   const today = todayAddis();
   const cutoff = attentionCutoff(today);
 
-  const [vehiclesR, tripsR, driversR, vdocsR, ddocsR, maintR, incR, attnRemR, upcomingR] = await Promise.all([
+  const [vehiclesR, tripsR, driversR, vdocsR, ddocsR, maintR, incR, attnRemR, upcomingR, activeR] = await Promise.all([
     supabase.from('vehicles').select('id, name, plate_number, status').order('name'),
     supabase
       .from('trips')
@@ -58,6 +62,12 @@ export default async function HomePage() {
       .eq('status', 'PENDING')
       .order('due_on', { ascending: true, nullsFirst: false })
       .limit(8),
+    // Trips on the road: the everyday "add an expense" entry point.
+    supabase
+      .from('v_trip_financials')
+      .select('trip_id, vehicle_id, trip_date, origin, destination, expenses, has_expenses')
+      .eq('status', 'IN_PROGRESS')
+      .order('trip_date', { ascending: false }),
   ]);
 
   const vehicles = rows<Vehicle>(vehiclesR);
@@ -68,6 +78,15 @@ export default async function HomePage() {
   const maint = rows<{ id: string; vehicle_id: string; service_category: string }>(maintR);
   const incidents = rows<{ id: string; vehicle_id: string; title: string }>(incR);
   const attnReminders = rows<{ id: string; type: string; params: unknown; entity_id: string }>(attnRemR);
+  const active = rows<{
+    trip_id: string;
+    vehicle_id: string;
+    trip_date: string;
+    origin: string;
+    destination: string;
+    expenses: number | string | null;
+    has_expenses: boolean;
+  }>(activeR);
   const upcoming = rows<{ id: string; type: string; params: unknown; due_on: string | null; priority: string }>(upcomingR);
 
   const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
@@ -96,8 +115,45 @@ export default async function HomePage() {
   return (
     <div>
       <PageHeader title={t('navFull.home')} />
+      <Flash saved={sp.saved} />
 
       <Section title={t('home.attentionTitle')}>
+        {active.length > 0 ? (
+          <div className="mb-4">
+            <h3 className="mb-2 text-base font-semibold text-muted">{t('home.activeTrips')}</h3>
+            <ul className="space-y-2">
+              {active.map((tr) => {
+                const v = vehicleMap.get(tr.vehicle_id);
+                const driver = driverMap.get(openTrips.get(tr.vehicle_id)?.driver_id ?? '')?.name;
+                return (
+                  <li key={tr.trip_id}>
+                    <Card>
+                      <p className="text-lg font-semibold leading-snug">
+                        {tr.origin} → {tr.destination}
+                      </p>
+                      <p className="text-base text-muted">
+                        {v ? v.plate_number : ''}
+                        {driver ? ` · ${driver}` : ''} · {formatDate(tr.trip_date, locale)}
+                      </p>
+                      <p className="mt-1 text-base">
+                        <span className="text-muted">{t('home.expensesSoFar')}: </span>
+                        <span className="font-semibold tabular-nums">
+                          {formatEtb(tr.has_expenses ? (toCents(tr.expenses) ?? 0) : 0, locale)}
+                        </span>
+                      </p>
+                      <Link
+                        href={`/expenses?trip=${tr.trip_id}&from=home`}
+                        className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-brand px-5 text-lg font-semibold text-on-brand hover:bg-brand-strong"
+                      >
+                        {t('home.addExpense')}
+                      </Link>
+                    </Card>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
         {attention.length === 0 ? (
           <EmptyState title={t('home.attentionEmpty')} hint={t('home.attentionEmptyHint')} />
         ) : (
