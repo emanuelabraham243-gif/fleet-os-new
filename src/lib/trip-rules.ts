@@ -14,6 +14,14 @@ export const TRIP_TRANSITIONS: Record<TripStatus, readonly TripStatus[]> = {
   CANCELLED: [],
 };
 
+/**
+ * A trip dated today or earlier is already on the road when it is entered, so it starts straight away
+ * (the truck becomes ON_TRIP). Only future-dated trips wait as PLANNED for the Start button.
+ */
+export function initialTripStatus(tripDate: string, today: string): 'IN_PROGRESS' | 'PLANNED' {
+  return tripDate <= today ? 'IN_PROGRESS' : 'PLANNED';
+}
+
 export function allowedTransitions(from: string): readonly TripStatus[] {
   return isTripStatus(from) ? TRIP_TRANSITIONS[from] : [];
 }

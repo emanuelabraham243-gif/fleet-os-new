@@ -2,7 +2,7 @@ import { requireViewer, isAdmin } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/format';
-import { Card, EmptyState, Flash, PageHeader, StatusBadge } from '@/components/ui';
+import { Badge, Card, EmptyState, Flash, PageHeader, StatusBadge } from '@/components/ui';
 import { rows } from '@/components/home/query';
 import { DriverForm } from './driver-form';
 
@@ -25,13 +25,24 @@ export default async function DriversPage({ searchParams }: { searchParams: SP }
   const { t, locale } = await getI18n();
   const supabase = await createClient();
 
+  const [driversRes, tripsRes] = await Promise.all([
+    supabase.from('drivers').select('id, name, phone, license_number, license_expiry, status, notes').order('name'),
+    supabase
+      .from('trips')
+      .select('driver_id, vehicles(plate_number)')
+      .eq('status', 'IN_PROGRESS')
+      .is('voided_at', null),
+  ]);
   // Pending slots first: they are the ones still waiting for details.
-  const drivers = rows<Driver>(
-    await supabase
-      .from('drivers')
-      .select('id, name, phone, license_number, license_expiry, status, notes')
-      .order('name'),
-  ).sort((a, b) => Number(b.status === 'PENDING') - Number(a.status === 'PENDING'));
+  const drivers = rows<Driver>(driversRes).sort(
+    (a, b) => Number(b.status === 'PENDING') - Number(a.status === 'PENDING'),
+  );
+  // Driver -> plate of the truck they are on right now (trip in progress).
+  const onTrip = new Map<string, string>();
+  for (const t of rows<{ driver_id: string; vehicles: { plate_number: string } | { plate_number: string }[] | null }>(tripsRes)) {
+    const v = Array.isArray(t.vehicles) ? t.vehicles[0] : t.vehicles;
+    onTrip.set(t.driver_id, v?.plate_number ?? '');
+  }
   const pending = drivers.filter((d) => d.status === 'PENDING').length;
 
   return (
@@ -66,6 +77,11 @@ export default async function DriversPage({ searchParams }: { searchParams: SP }
                   <p className="min-w-0 truncate text-lg font-semibold">{d.name}</p>
                   <StatusBadge group="driverStatus" code={d.status} />
                 </div>
+                {onTrip.has(d.id) ? (
+                  <p className="mt-2">
+                    <Badge tone="blue">{t('drivers.onTrip', { plate: onTrip.get(d.id) ?? '' })}</Badge>
+                  </p>
+                ) : null}
                 <dl className="mt-2 space-y-1 text-base">
                   <div className="flex justify-between gap-2">
                     <dt className="text-muted">{t('drivers.form.phone')}</dt>

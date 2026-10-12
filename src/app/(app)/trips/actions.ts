@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/server';
 import { requireViewer } from '@/lib/auth';
 import { fieldErrorsFromZod, zDate, zMoney, zText, zUuid } from '@/lib/schemas';
 import { formValues, mapDbError, type FormState } from '@/lib/action-helpers';
-import { canTransition, isTripStatus, tripDuplicateKey } from '@/lib/trip-rules';
+import { canTransition, initialTripStatus, isTripStatus, tripDuplicateKey } from '@/lib/trip-rules';
+import { todayAddis } from '@/lib/format';
 
 const createSchema = z.object({
   vehicle_id: zUuid(),
@@ -61,7 +62,7 @@ export async function createTrip(_prev: FormState, fd: FormData): Promise<FormSt
     p_trip_date: d.trip_date,
     p_origin: d.origin,
     p_destination: d.destination,
-    p_status: 'PLANNED',
+    p_status: initialTripStatus(d.trip_date, todayAddis()),
     p_notes: null,
     p_revenue: revenue ?? null,
     p_revenue_description: null,
@@ -71,6 +72,8 @@ export async function createTrip(_prev: FormState, fd: FormData): Promise<FormSt
   revalidatePath('/trips');
   revalidatePath('/expenses');
   revalidatePath('/vehicles');
+  revalidatePath('/drivers');
+  revalidatePath('/');
   redirect('/trips?saved=1');
 }
 
@@ -108,6 +111,7 @@ export async function setTripStatus(fd: FormData): Promise<void> {
 
   revalidatePath('/trips');
   revalidatePath('/vehicles');
+  revalidatePath('/drivers');
   revalidatePath('/');
   redirect(`${back}?saved=1`);
 }

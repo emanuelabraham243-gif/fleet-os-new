@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addisLocalToIso,
   allowedTransitions,
+  initialTripStatus,
   calcTotalCents,
   canTransition,
   centsToDecimal,
@@ -92,5 +93,15 @@ describe('odometer plausibility', () => {
     expect(isOdometerSuspicious(80000, 100000)).toBe(true);
     expect(isOdometerSuspicious(100100, 100000)).toBe(false);
     expect(isOdometerSuspicious(99000, 100000)).toBe(false);
+  });
+});
+
+describe('initialTripStatus', () => {
+  it('starts a trip dated today or earlier straight away', () => {
+    expect(initialTripStatus('2026-10-12', '2026-10-12')).toBe('IN_PROGRESS');
+    expect(initialTripStatus('2026-10-10', '2026-10-12')).toBe('IN_PROGRESS');
+  });
+  it('keeps a future trip planned', () => {
+    expect(initialTripStatus('2026-10-13', '2026-10-12')).toBe('PLANNED');
   });
 });
