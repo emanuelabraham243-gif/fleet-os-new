@@ -112,3 +112,22 @@ export function centsToDecimal(cents: number): string {
   const abs = Math.abs(Math.round(cents));
   return `${neg ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
+
+/**
+ * Trip expense categories, in the order the form lists them: the client's everyday costs first.
+ * Must match trip_expenses_category_check (migration 20261012000002_expense_categories.sql).
+ */
+export const EXPENSE_CATEGORIES = [
+  'DRIVER_ALLOWANCE', // road allowance
+  'FOOD_WATER',
+  'SUPPLIES',
+  'TIRE_REPAIR',
+  'TOLL',
+  'LODGING',
+  'LOADING', // loaders
+  'FUEL',
+  'PARKING',
+  'REPAIR',
+  'FINE',
+  'OTHER',
+] as const;

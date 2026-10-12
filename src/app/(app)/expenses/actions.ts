@@ -15,18 +15,9 @@ import {
 } from '@/lib/schemas';
 import { formValues, mapDbError, type FormState } from '@/lib/action-helpers';
 import { toCents } from '@/lib/money';
-import { expenseDuplicateKey } from '@/lib/trip-rules';
+import { EXPENSE_CATEGORIES, expenseDuplicateKey } from '@/lib/trip-rules';
 
-const CATEGORIES = [
-  'FUEL',
-  'DRIVER_ALLOWANCE',
-  'TOLL',
-  'LOADING',
-  'PARKING',
-  'REPAIR',
-  'FINE',
-  'OTHER',
-] as const;
+const CATEGORIES = EXPENSE_CATEGORIES;
 
 const expenseSchema = z.object({
   trip_id: zUuid(),

@@ -13,18 +13,10 @@ import {
   TextField,
   useFormAction,
 } from '@/components/forms-core';
+import { EXPENSE_CATEGORIES } from '@/lib/trip-rules';
 import { createExpense, createRevenue } from './actions';
 
-const CATEGORIES = [
-  'FUEL',
-  'DRIVER_ALLOWANCE',
-  'TOLL',
-  'LOADING',
-  'PARKING',
-  'REPAIR',
-  'FINE',
-  'OTHER',
-] as const;
+const CATEGORIES = EXPENSE_CATEGORIES;
 
 export function ExpenseForm({
   trips,
