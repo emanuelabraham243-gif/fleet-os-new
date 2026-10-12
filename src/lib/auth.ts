@@ -15,7 +15,7 @@ export type Profile = {
 };
 
 export type Viewer = {
-  user: { id: string; email: string | null };
+  user: { id: string; phone: string | null };
   profile: Profile | null;
 };
 
@@ -23,7 +23,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
-  const user = { id: data.user.id, email: data.user.email ?? null };
+  const user = { id: data.user.id, phone: data.user.phone ? `+${data.user.phone.replace(/^\+/, '')}` : null };
 
   const { data: row } = await supabase
     .from('profiles')
@@ -49,7 +49,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 });
 
 export async function requireViewer(): Promise<{
-  user: { id: string; email: string | null };
+  user: { id: string; phone: string | null };
   profile: Profile;
 }> {
   const viewer = await getViewer();

@@ -38,6 +38,11 @@ export const en = {
     action_VOID: 'Voided',
     action_RESTORE: 'Restored',
     action_DELETE: 'Deleted',
+    action_SIGN_IN: 'Signed in',
+    action_SIGN_UP: 'Signed up',
+    action_RESET_REQUEST: 'Asked for a reset code',
+    action_RESET_COMPLETE: 'Reset their password',
+    action_TEMP_PASSWORD_SET: 'Temporary password set',
   },
 };
 
@@ -78,5 +83,10 @@ export const am: Widen<typeof en> = {
     action_VOID: 'ተሰርዟል',
     action_RESTORE: 'ተመልሷል',
     action_DELETE: 'ጠፍቷል',
+    action_SIGN_IN: 'ገብቷል',
+    action_SIGN_UP: 'ተመዝግቧል',
+    action_RESET_REQUEST: 'የማረጋገጫ ኮድ ጠይቋል',
+    action_RESET_COMPLETE: 'የይለፍ ቃሉን ቀይሯል',
+    action_TEMP_PASSWORD_SET: 'ጊዜያዊ የይለፍ ቃል ተዘጋጅቷል',
   },
 };

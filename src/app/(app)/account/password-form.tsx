@@ -1,17 +1,31 @@
 'use client';
 
-import { useId } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useI18n } from '@/lib/i18n-client';
 import { FormMessage, SubmitButton, useFormAction } from '@/components/forms-core';
+import { checkNewPassword } from '@/lib/auth-rules';
+import { PasswordField } from '@/app/login/login-form';
 import { updatePassword } from './actions';
 
 export function PasswordForm() {
   const { t } = useI18n();
   const { state, formAction } = useFormAction(updatePassword);
-  const id = useId();
-  const err = state.fieldErrors?.password;
+  const [local, setLocal] = useState<Record<string, string> | null>(null);
+  const errors = local ?? state.fieldErrors ?? {};
+
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const fd = new FormData(e.currentTarget);
+    const problem = checkNewPassword(String(fd.get('password') ?? ''), String(fd.get('confirm') ?? ''));
+    if (problem) {
+      e.preventDefault();
+      setLocal({ [problem === 'passwordMismatch' ? 'confirm' : 'password']: problem });
+    } else {
+      setLocal(null);
+    }
+  };
+
   return (
-    <form action={formAction} noValidate>
+    <form action={formAction} onSubmit={onSubmit} noValidate>
       <FormMessage state={state} />
       <div aria-live="polite">
         {state.ok ? (
@@ -23,27 +37,19 @@ export function PasswordForm() {
           </p>
         ) : null}
       </div>
-      <div className="mb-4">
-        <label htmlFor={id} className="mb-1 block text-base font-medium">
-          {t('account.newPassword')}
-        </label>
-        <input
-          id={id}
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          aria-invalid={err ? true : undefined}
-          aria-describedby={err ? `${id}-err` : undefined}
-          className="block min-h-12 w-full rounded-xl border border-input-border bg-surface px-4 py-2 text-base"
-        />
-        {err ? (
-          <p id={`${id}-err`} role="alert" className="mt-1 text-sm font-medium text-bad-ink">
-            {t('account.passwordTooShort')}
-          </p>
-        ) : null}
-      </div>
+      <PasswordField
+        name="password"
+        label={t('account.newPassword')}
+        hint={t('auth.passwordRule')}
+        error={errors.password}
+        autoComplete="new-password"
+      />
+      <PasswordField
+        name="confirm"
+        label={t('auth.confirmPassword')}
+        error={errors.confirm}
+        autoComplete="new-password"
+      />
       <SubmitButton>{t('account.setPassword')}</SubmitButton>
     </form>
   );

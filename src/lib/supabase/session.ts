@@ -1,13 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Signed-out screens: sign in, sign up, forgot password (all under /login).
 function isPublic(pathname: string) {
-  return (
-    pathname === '/login' ||
-    pathname.startsWith('/login/') ||
-    pathname === '/auth' ||
-    pathname.startsWith('/auth/')
-  );
+  return pathname === '/login' || pathname.startsWith('/login/');
 }
 
 export async function updateSession(request: NextRequest) {

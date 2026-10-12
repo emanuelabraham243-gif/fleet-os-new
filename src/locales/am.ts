@@ -26,12 +26,6 @@ export const am: Widen<typeof en> = {
     appName: 'FleetOS', skipToContent: 'ወደ ዋናው ይዘት ዝለል', switchLanguage: 'ቋንቋ ቀይር',
     notificationsLabel: 'ማሳወቂያዎች', menu: 'ምናሌ',
   },
-  auth: {
-    title: 'ወደ FleetOS ይግቡ', email: 'ኢሜይል', password: 'የይለፍ ቃል', signIn: 'ግባ',
-    magicLink: 'የመግቢያ ሊንክ በኢሜይል ላክልኝ', linkSent: 'የመግቢያ ሊንክ ተልኳል።', invalidCreds: 'ኢሜይሉ ወይም የይለፍ ቃሉ ትክክል አይደለም።',
-    noProfile: 'ይህ መለያ ገና ከድርጅት ጋር አልተገናኘም። እባክዎ አስተዳዳሪዎን ያነጋግሩ።',
-    signOut: 'ውጣ', or: 'ወይም', checkEmail: 'የመግቢያ ሊንኩን ለማግኘት ኢሜይልዎን ይመልከቱ።',
-  },
   account: {
     title: 'መለያ', language: 'ቋንቋ', setPassword: 'የይለፍ ቃል ያዘጋጁ', newPassword: 'አዲስ የይለፍ ቃል',
     passwordSaved: 'የይለፍ ቃል ተቀምጧል።', role: 'ሚና', organization: 'ድርጅት',
@@ -44,7 +38,8 @@ export const am: Widen<typeof en> = {
     maintenanceStatus: { OVERDUE: 'ጊዜው አልፏል', DUE_SOON: 'በቅርቡ ይደርሳል', OK: 'ደህና', UNKNOWN: 'ያልታወቀ' },
     gpsState: { LIVE: 'ቀጥታ', DELAYED: 'የዘገየ', OFFLINE: 'ከመስመር ውጭ', UNKNOWN: 'ያልታወቀ' },
     expenseCategory: {
-      FUEL: 'ነዳጅ', DRIVER_ALLOWANCE: 'የአሽከርካሪ አበል', TOLL: 'የመንገድ ክፍያ', LOADING: 'ጭነት',
+      FUEL: 'ነዳጅ', DRIVER_ALLOWANCE: 'የመንገድ አበል', TOLL: 'የመንገድ ክፍያ', LOADING: 'ጫኝና አውራጅ',
+      FOOD_WATER: 'ውሃ / ምግብ', SUPPLIES: 'አቅርቦቶች', TIRE_REPAIR: 'የጎማ ጥገና', LODGING: 'ማረፊያ',
       PARKING: 'የመኪና ማቆሚያ', REPAIR: 'ጥገና', FINE: 'ቅጣት', OTHER: 'ሌላ',
     },
     fuelType: { DIESEL: 'ናፍጣ', PETROL: 'ቤንዚን' },
@@ -76,6 +71,9 @@ export const am: Widen<typeof en> = {
     badReference: 'የተመረጠው ንጥል አሁን የለም።',
     odometerJump: 'ይህ የኦዶሜትር ንባብ ከቀዳሚው በእጅጉ ይለያል። እባክዎ ያረጋግጡ ወይም ቢሆንም ያስቀምጡ።',
     voidReasonRequired: 'ምክንያት መጻፍ ያስፈልጋል።', notFound: 'አልተገኘም።',
+    phoneInvalid: 'ስልክ ቁጥሩ ትክክል አይደለም።', passwordTooShort: 'የይለፍ ቃሉ ቢያንስ 8 ፊደል መሆን አለበት።',
+    passwordTooLong: 'የይለፍ ቃሉ በጣም ረጅም ነው።', passwordMismatch: 'የይለፍ ቃሉ አይመሳሰልም።',
+    codeInvalid: 'ባለ 6 አሃዝ ኮዱን ያስገቡ።',
   },
   reminders: {
     VEHICLE_DOCUMENT_EXPIRY: { title: 'የተሽከርካሪ ሰነድ ማብቂያ', message: 'የ{vehicle_name} ({plate_number}) {document_type}፦ የማብቂያ ቀኑን ያረጋግጡ።' },

@@ -2,6 +2,7 @@ import { isAdmin, requireViewer } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
 import { Card, LinkButton, PageHeader, Section } from '@/components/ui';
 import { LanguageToggle, SignOutButton } from '@/components/shell-controls';
+import { formatEthiopianMobile } from '@/lib/phone';
 import { PasswordForm } from './password-form';
 
 export default async function AccountPage() {
@@ -15,8 +16,8 @@ export default async function AccountPage() {
       <Card className="mb-6">
         <dl className="space-y-3">
           <div>
-            <dt className="text-sm text-muted">{t('auth.email')}</dt>
-            <dd className="break-all text-base font-medium">{user.email}</dd>
+            <dt className="text-sm text-muted">{t('auth.phone')}</dt>
+            <dd className="text-base font-medium tabular-nums">{formatEthiopianMobile(user.phone) || t('common.unknown')}</dd>
           </div>
           <div>
             <dt className="text-sm text-muted">{t('account.role')}</dt>
@@ -41,7 +42,8 @@ export default async function AccountPage() {
         </Card>
       </Section>
       {admin ? (
-        <div className="mb-6">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <LinkButton href="/users" variant="secondary">{t('users.title')}</LinkButton>
           <LinkButton href="/audit" variant="secondary">{t('audit.title')}</LinkButton>
         </div>
       ) : null}

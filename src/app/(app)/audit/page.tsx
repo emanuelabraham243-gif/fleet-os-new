@@ -13,6 +13,7 @@ const PAGE_SIZE = 30;
 const ENTITY_TYPES = [
   'vehicles', 'drivers', 'fuel_records', 'trips', 'trip_revenue', 'trip_expenses', 'service_records',
   'maintenance_schedules', 'vehicle_documents', 'driver_documents', 'general_documents', 'incidents', 'profiles',
+  'org_phone_members', 'auth',
 ] as const;
 
 type AuditRow = {

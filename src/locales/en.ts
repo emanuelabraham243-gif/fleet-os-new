@@ -23,12 +23,6 @@ export const en = {
     appName: 'FleetOS', skipToContent: 'Skip to content', switchLanguage: 'Switch language',
     notificationsLabel: 'Notifications', menu: 'Menu',
   },
-  auth: {
-    title: 'Sign in to FleetOS', email: 'Email', password: 'Password', signIn: 'Sign in',
-    magicLink: 'Email me a sign-in link', linkSent: 'Sign-in link sent.', invalidCreds: 'Email or password is incorrect.',
-    noProfile: 'This account is not linked to an organization yet. Please contact your administrator.',
-    signOut: 'Sign out', or: 'or', checkEmail: 'Check your email for the sign-in link.',
-  },
   account: {
     title: 'Account', language: 'Language', setPassword: 'Set password', newPassword: 'New password',
     passwordSaved: 'Password saved.', role: 'Role', organization: 'Organization',
@@ -41,7 +35,8 @@ export const en = {
     maintenanceStatus: { OVERDUE: 'Overdue', DUE_SOON: 'Due soon', OK: 'OK', UNKNOWN: 'Unknown' },
     gpsState: { LIVE: 'Live', DELAYED: 'Delayed', OFFLINE: 'Offline', UNKNOWN: 'Unknown' },
     expenseCategory: {
-      FUEL: 'Fuel', DRIVER_ALLOWANCE: 'Driver allowance', TOLL: 'Toll', LOADING: 'Loading',
+      FUEL: 'Fuel', DRIVER_ALLOWANCE: 'Road allowance', TOLL: 'Toll', LOADING: 'Loaders',
+      FOOD_WATER: 'Water / food', SUPPLIES: 'Supplies', TIRE_REPAIR: 'Tire repair', LODGING: 'Lodging',
       PARKING: 'Parking', REPAIR: 'Repair', FINE: 'Fine', OTHER: 'Other',
     },
     fuelType: { DIESEL: 'Diesel', PETROL: 'Petrol' },
@@ -73,6 +68,9 @@ export const en = {
     badReference: 'A selected item no longer exists.',
     odometerJump: 'This odometer reading differs a lot from the previous one. Please check it, or save anyway.',
     voidReasonRequired: 'A reason is required.', notFound: 'Not found.',
+    phoneInvalid: 'The phone number is not correct.', passwordTooShort: 'The password must be at least 8 characters.',
+    passwordTooLong: 'The password is too long.', passwordMismatch: 'The passwords do not match.',
+    codeInvalid: 'Enter the 6-digit code.',
   },
   reminders: {
     VEHICLE_DOCUMENT_EXPIRY: { title: 'Vehicle document expiry', message: '{document_type} for {vehicle_name} ({plate_number}): check the expiry date.' },
