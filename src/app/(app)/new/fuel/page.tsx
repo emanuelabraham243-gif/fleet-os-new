@@ -5,6 +5,7 @@ import { todayAddis } from '@/lib/format';
 import { Card, PageHeader } from '@/components/ui';
 import { rows } from '@/components/home/query';
 import { FuelForm } from './fuel-form';
+import { vehicleLabel } from '@/lib/vehicle-file';
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,7 +22,7 @@ export default async function NewFuelPage({ searchParams }: { searchParams: SP }
   );
   const vehicles = data.map((x) => ({
     value: x.id,
-    label: `${x.name} · ${x.plate_number}`,
+    label: vehicleLabel(x.name, x.plate_number),
   }));
   const defaultVehicle = v && UUID.test(v) && vehicles.some((x) => x.value === v) ? v : undefined;
 

@@ -2,6 +2,23 @@
 import { costPerKm, fuelEfficiency, monthProfit, odometerSpan, type Metric } from './calc';
 import { toCents, sumCents } from './money';
 
+/**
+ * "Name · plate", or just the plate when the vehicle is named by its plate (no repeat).
+ * `plate` is optional for places that only want the extra line: see plateIfDifferent().
+ */
+export function vehicleLabel(name: string | null | undefined, plate: string | null | undefined): string {
+  if (!name) return plate ?? '';
+  return plateIfDifferent(name, plate) ? `${name} · ${plate}` : name;
+}
+
+/** The plate when it adds something to the name, otherwise null. */
+export function plateIfDifferent(name: string | null | undefined, plate: string | null | undefined): string | null {
+  if (!plate) return null;
+  if (!name) return plate;
+  const norm = (x: string) => x.replace(/\s+/g, '').toUpperCase();
+  return norm(name) === norm(plate) ? null : plate;
+}
+
 export const WINDOW_DAYS = 90;
 export const HISTORY_LIMIT = 15;
 

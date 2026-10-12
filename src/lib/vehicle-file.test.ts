@@ -11,8 +11,7 @@ import {
   monthStart,
   reasonKey,
   windowFrom,
-  type FinancialRow,
-} from './vehicle-file';
+  type FinancialRow, plateIfDifferent, vehicleLabel } from './vehicle-file';
 
 const TODAY = '2026-09-21';
 
@@ -242,5 +241,22 @@ describe('fleet helpers', () => {
       { id: 'b', vehicle_id: 'v', driver_id: 'd2', trip_date: '2026-09-05' },
     ]);
     expect(m.get('v')?.driver_id).toBe('d2');
+  });
+});
+
+describe('vehicleLabel / plateIfDifferent', () => {
+  it('shows the plate once when the vehicle is named by its plate', () => {
+    expect(vehicleLabel('A11109/33081', 'A11109/33081')).toBe('A11109/33081');
+    expect(vehicleLabel('a11109 / 33081', 'A11109/33081')).toBe('a11109 / 33081');
+    expect(plateIfDifferent('A11109/33081', 'A11109/33081')).toBeNull();
+  });
+  it('keeps name · plate when they differ', () => {
+    expect(vehicleLabel('Truck 1', 'AA-12345')).toBe('Truck 1 · AA-12345');
+    expect(plateIfDifferent('Truck 1', 'AA-12345')).toBe('AA-12345');
+  });
+  it('falls back sensibly when one side is missing', () => {
+    expect(vehicleLabel(null, 'AA-1')).toBe('AA-1');
+    expect(vehicleLabel('Truck 1', null)).toBe('Truck 1');
+    expect(plateIfDifferent('Truck 1', null)).toBeNull();
   });
 });

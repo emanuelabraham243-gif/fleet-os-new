@@ -16,6 +16,7 @@ import {
   type FuelRow,
   type ServiceRow,
   type TripExpenseRow,
+  plateIfDifferent,
 } from '@/lib/vehicle-file';
 import { Badge, Card, EmptyState, Flash, LinkButton, Metric, PageHeader, Section, StatusBadge } from '@/components/ui';
 import { row, rows } from '@/components/home/query';
@@ -193,7 +194,7 @@ export default async function VehicleFilePage({
       <Flash saved={sp.saved} error={sp.error} warn={sp.warn} />
       <PageHeader
         title={vehicle.name}
-        subtitle={[vehicle.plate_number, makeModel].filter(Boolean).join(' · ')}
+        subtitle={[plateIfDifferent(vehicle.name, vehicle.plate_number), makeModel].filter(Boolean).join(' · ')}
         actions={<StatusBadge group="vehicleStatus" code={vehicle.status} />}
       />
       <dl className="mb-4 space-y-1 text-base">

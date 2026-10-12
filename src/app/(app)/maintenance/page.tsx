@@ -12,6 +12,7 @@ import { rows as unwrap } from '@/components/home/query';
 import { VoidForm } from '@/components/forms-core';
 import { ServiceForm } from './service-form';
 import { ScheduleForm } from './schedule-form';
+import { vehicleLabel } from '@/lib/vehicle-file';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -67,7 +68,7 @@ function ScheduleCard({ s, i18n, today }: { s: Schedule; i18n: I18n; today: stri
         <div className="min-w-0">
           <p className="text-lg font-semibold leading-snug">{label('serviceCategory', s.service_category)}</p>
           <p className="text-base text-muted">
-            {s.vehicle_name} · {s.plate_number}
+            {vehicleLabel(s.vehicle_name, s.plate_number)}
           </p>
         </div>
         <StatusBadge group="maintenanceStatus" code={status} />
@@ -216,7 +217,7 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
     ...orderedCats.map((c) => ({ href: hrefFor(c), label: label('serviceCategory', c), active: activeCategory === c })),
   ];
 
-  const vehicleOptions = vehicles.map((v) => ({ id: v.id, label: `${v.name} · ${v.plate_number}` }));
+  const vehicleOptions = vehicles.map((v) => ({ id: v.id, label: vehicleLabel(v.name, v.plate_number) }));
   const returnTo = hrefFor(activeCategory);
   const histHrefFor = (p: number) => {
     const q = new URLSearchParams();
@@ -328,7 +329,7 @@ export default async function MaintenancePage({ searchParams }: { searchParams: 
                     <div className="min-w-0">
                       <p className="text-lg font-semibold leading-snug">{label('serviceCategory', r.category)}</p>
                       <p className="text-base text-muted">
-                        {v ? `${v.name} · ${v.plate_number}` : ''}
+                        {v ? vehicleLabel(v.name, v.plate_number) : ''}
                       </p>
                     </div>
                     <p className="shrink-0 text-base">{formatDate(r.service_date, locale)}</p>

@@ -10,6 +10,7 @@ import { Card, Chips, EmptyState, Flash, LinkButton, PageHeader, Pager, StatusBa
 import { rows } from '@/components/home/query';
 import { setTripStatus } from './actions';
 import { StatusButton } from './status-button';
+import { vehicleLabel } from '@/lib/vehicle-file';
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
@@ -174,7 +175,7 @@ export default async function TripsPage({ searchParams }: { searchParams: SP }) 
                         {trip.origin} → {trip.destination}
                       </p>
                       <p className="text-base">
-                        {v ? `${v.name} · ${v.plate_number}` : t('trips.unknownVehicle')}
+                        {v ? vehicleLabel(v.name, v.plate_number) : t('trips.unknownVehicle')}
                       </p>
                       <p className="text-base text-muted">{d ? d.name : t('trips.unknownDriver')}</p>
                     </div>

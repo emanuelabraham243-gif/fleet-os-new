@@ -9,6 +9,7 @@ import { rows } from '@/components/home/query';
 import { VoidForm } from '@/components/forms-core';
 import { ExpenseForm, RevenueForm } from './expense-form';
 import { CostsPdfButton, type PdfServiceRow, type PdfTripRow } from './costs-pdf-button';
+import { vehicleLabel } from '@/lib/vehicle-file';
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
@@ -190,7 +191,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
     return {
       dateLabel: formatDate(trip.trip_date, locale),
       routeLabel: `${trip.origin} → ${trip.destination}`,
-      vehicleLabel: v ? `${v.name} · ${v.plate_number}` : t('trips.unknownVehicle'),
+      vehicleLabel: v ? vehicleLabel(v.name, v.plate_number) : t('trips.unknownVehicle'),
       revenueLabel: revenueCents == null ? t('expenses.pdfNoRevenue') : formatEtb(revenueCents, locale),
       expenseLabel: trip.has_expenses ? formatEtb(toCents(trip.expenses) ?? 0, locale) : t('expenses.pdfNoExpense'),
       profitLabel: profitCents == null ? t('expenses.pdfNoProfit') : formatEtb(profitCents, locale),
@@ -201,7 +202,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
     return {
       dateLabel: formatDate(r.service_date, locale),
       categoryLabel: label('serviceCategory', r.category),
-      vehicleLabel: v ? `${v.name} · ${v.plate_number}` : '',
+      vehicleLabel: v ? vehicleLabel(v.name, v.plate_number) : '',
       costLabel: formatEtb(toCents(r.cost) ?? 0, locale),
     };
   });
@@ -340,7 +341,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
                         {trip.origin} → {trip.destination}
                       </h2>
                       <p className="text-base text-muted">
-                        {v ? `${v.name} · ${v.plate_number}` : t('trips.unknownVehicle')}
+                        {v ? vehicleLabel(v.name, v.plate_number) : t('trips.unknownVehicle')}
                       </p>
                     </div>
                     <StatusBadge group="tripStatus" code={trip.status} />
@@ -473,7 +474,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-lg font-semibold leading-snug">{label('serviceCategory', r.category)}</p>
-                        <p className="text-base text-muted">{v ? `${v.name} · ${v.plate_number}` : ''}</p>
+                        <p className="text-base text-muted">{v ? vehicleLabel(v.name, v.plate_number) : ''}</p>
                       </div>
                       <p className="shrink-0 text-base">{formatDate(r.service_date, locale)}</p>
                     </div>

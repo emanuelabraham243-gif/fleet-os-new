@@ -5,6 +5,7 @@ import { formatEtb, formatMonth, todayAddis } from '@/lib/format';
 import { toCents } from '@/lib/money';
 import { Card, EmptyState, PageHeader, Section } from '@/components/ui';
 import { rows } from '@/components/home/query';
+import { vehicleLabel } from '@/lib/vehicle-file';
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -140,7 +141,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: SP }
               >
                 <option value="">{t('reports.pnlChoose')}</option>
                 {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name} · {v.plate_number}</option>
+                  <option key={v.id} value={v.id}>{vehicleLabel(v.name, v.plate_number)}</option>
                 ))}
               </select>
             </div>

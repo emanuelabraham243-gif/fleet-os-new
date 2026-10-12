@@ -4,7 +4,7 @@ import { getI18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { todayAddis, formatDate, formatEtb, formatNumber } from '@/lib/format';
 import { toCents } from '@/lib/money';
-import { currentTripByVehicle, fleetCounts } from '@/lib/vehicle-file';
+import { currentTripByVehicle, fleetCounts, plateIfDifferent } from '@/lib/vehicle-file';
 import { Badge, Card, EmptyState, Flash, PageHeader, Section, StatusBadge } from '@/components/ui';
 import { buildAttention, attentionCutoff } from '@/components/home/attention';
 import { priorityTone, reminderText } from '@/components/home/reminder-text';
@@ -202,7 +202,7 @@ export default async function HomePage({ searchParams }: { searchParams: SP }) {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-lg font-semibold">{v.name}</p>
-                        <p className="text-base text-muted">{v.plate_number}</p>
+                        {plateIfDifferent(v.name, v.plate_number) ? <p className="text-base text-muted">{v.plate_number}</p> : null}
                       </div>
                       <StatusBadge group="vehicleStatus" code={v.status} />
                     </div>

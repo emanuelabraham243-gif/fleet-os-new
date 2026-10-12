@@ -10,6 +10,7 @@ import { DocumentForm } from './document-form';
 import { GeneralDocumentForm } from './general-document-form';
 import { CaptureDocumentForm } from './capture-document-form';
 import { DocFileActions } from './doc-file-actions';
+import { vehicleLabel } from '@/lib/vehicle-file';
 
 type SP = Record<string, string | string[] | undefined>;
 type Kind = 'vehicle' | 'driver' | 'general';
@@ -211,7 +212,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
 
   const owners = rows<{ id: string; name: string; plate_number?: string }>(ownersRes).map((o) => ({
     id: o.id,
-    label: o.plate_number ? `${o.name} · ${o.plate_number}` : o.name,
+    label: vehicleLabel(o.name, o.plate_number),
   }));
   const ownerMap = new Map(owners.map((o) => [o.id, o.label]));
   const rawAllDocs = rows<DocRow>(docsRes);

@@ -5,6 +5,7 @@ import { todayAddis } from '@/lib/format';
 import { Card, EmptyState, PageHeader } from '@/components/ui';
 import { rows } from '@/components/home/query';
 import { TripForm } from '../../trips/trip-form';
+import { vehicleLabel } from '@/lib/vehicle-file';
 
 export default async function NewTripPage() {
   await requireViewer();
@@ -22,7 +23,7 @@ export default async function NewTripPage() {
 
   const vehicles = rows<{ id: string; name: string; plate_number: string; status: string }>(vRes).map((v) => ({
     value: v.id,
-    label: `${v.name} · ${v.plate_number} (${label('vehicleStatus', v.status)})`,
+    label: `${vehicleLabel(v.name, v.plate_number)} (${label('vehicleStatus', v.status)})`,
   }));
   const drivers = rows<{ id: string; name: string }>(dRes).map((d) => ({ value: d.id, label: d.name }));
 

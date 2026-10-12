@@ -3,7 +3,7 @@ import { requireViewer, isAdmin } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { formatKm } from '@/lib/format';
-import { currentTripByVehicle } from '@/lib/vehicle-file';
+import { currentTripByVehicle, plateIfDifferent } from '@/lib/vehicle-file';
 import { EmptyState, Flash, LinkButton, PageHeader, StatusBadge } from '@/components/ui';
 import { rows } from '@/components/home/query';
 import { VehicleForm } from './vehicle-form';
@@ -88,7 +88,7 @@ export default async function VehiclesPage({ searchParams }: { searchParams: SP 
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-lg font-semibold">{v.name}</p>
-                      <p className="text-base text-muted">{v.plate_number}</p>
+                      {plateIfDifferent(v.name, v.plate_number) ? <p className="text-base text-muted">{v.plate_number}</p> : null}
                       {makeModel ? <p className="text-base text-muted">{makeModel}</p> : null}
                     </div>
                     <StatusBadge group="vehicleStatus" code={v.status} />
