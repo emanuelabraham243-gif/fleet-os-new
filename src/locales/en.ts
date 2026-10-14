@@ -13,7 +13,7 @@ export const en = {
   },
   nav: {
     home: 'Home', vehicles: 'Vehicles', trips: 'Trips', maintenance: 'Service', expenses: 'Costs',
-    documents: 'Docs', notifications: 'Alerts', account: 'Account',
+    documents: 'Docs', houses: 'Houses', notifications: 'Alerts', account: 'Account',
   },
   navFull: {
     home: 'Command Center', vehicles: 'Vehicles', trips: 'Trips', maintenance: 'Maintenance',

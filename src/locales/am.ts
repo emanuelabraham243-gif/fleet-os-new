@@ -16,7 +16,7 @@ export const am: Widen<typeof en> = {
   },
   nav: {
     home: 'ዋና', vehicles: 'ተሽከርካሪ', trips: 'ጉዞ', maintenance: 'ጥገና', expenses: 'ወጪ',
-    documents: 'ሰነድ', notifications: 'ማሳወቂያ', account: 'መለያ',
+    documents: 'ሰነድ', houses: 'ቤቶች', notifications: 'ማሳወቂያ', account: 'መለያ',
   },
   navFull: {
     home: 'የቁጥጥር ማዕከል', vehicles: 'ተሽከርካሪዎች', trips: 'ጉዞዎች', maintenance: 'ጥገና',

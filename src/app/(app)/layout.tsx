@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { requireViewer } from '@/lib/auth';
+import { isAdmin, requireViewer } from '@/lib/auth';
 import { getI18n } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { AppNav } from '@/components/nav';
@@ -101,7 +101,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       ) : null}
       <OfflineBanner />
       <div className="flex flex-1">
-        <AppNav />
+        <AppNav admin={isAdmin(profile)} />
         <main id="main" className="min-w-0 flex-1 p-4 pb-28 md:pb-8">
           <div className="mx-auto w-full max-w-5xl">{children}</div>
         </main>

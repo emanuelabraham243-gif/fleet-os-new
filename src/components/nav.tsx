@@ -46,6 +46,13 @@ const ICONS: Record<string, ReactNode> = {
       <circle cx="12" cy="12" r="2.5" />
     </>,
   ),
+  houses: svg(
+    <>
+      <path d="M3 11l9-7 9 7" />
+      <path d="M5 10v10h14V10" />
+      <path d="M10 20v-5h4v5" />
+    </>,
+  ),
   documents: svg(
     <>
       <path d="M7 3h7l5 5v13H7z" />
@@ -63,9 +70,13 @@ const ITEMS = [
   { href: '/documents', key: 'documents' },
 ] as const;
 
-export function AppNav() {
+// Family finances: shown to administrators only (the page and RLS also enforce this).
+const ADMIN_ITEMS = [{ href: '/houses', key: 'houses' }] as const;
+
+export function AppNav({ admin = false }: { admin?: boolean }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const items: readonly { href: string; key: string }[] = admin ? [...ITEMS, ...ADMIN_ITEMS] : ITEMS;
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/');
@@ -77,8 +88,8 @@ export function AppNav() {
         aria-label={t('shell.menu')}
         className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface md:hidden"
       >
-        <ul className="grid grid-cols-6">
-          {ITEMS.map((it) => {
+        <ul className={`grid ${items.length > 6 ? 'grid-cols-7' : 'grid-cols-6'}`}>
+          {items.map((it) => {
             const active = isActive(it.href);
             return (
               <li key={it.href}>
@@ -110,7 +121,7 @@ export function AppNav() {
         className="hidden w-56 shrink-0 border-r border-line bg-surface md:block"
       >
         <ul className="sticky top-16 space-y-1 p-3">
-          {ITEMS.map((it) => {
+          {items.map((it) => {
             const active = isActive(it.href);
             return (
               <li key={it.href}>

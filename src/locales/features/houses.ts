@@ -1,12 +1,10 @@
 import type { Widen } from '../../lib/i18n-core';
 
-// House & real estate payments (Documents > Other documents > Family). en is the source of truth.
+// House & real estate payments: its own section (admins only). en is the source of truth.
 export const en = {
   houses: {
     title: 'House & real estate payments',
     subtitle: 'Price, paid, remaining and what still needs checking for every property. Dates use the Ethiopian calendar.',
-    linkHint: 'Prices, payments and open questions for each property.',
-    back: 'Family documents',
     add: 'Add a house',
     empty: 'No houses yet.',
     emptyHint: 'Use “Add a house” above.',
@@ -81,8 +79,6 @@ export const am: Widen<typeof en> = {
   houses: {
     title: 'የቤትና የሪል እስቴት ክፍያዎች',
     subtitle: 'የእያንዳንዱ ቤት ዋጋ፣ የተከፈለ፣ የቀረ እና የሚጣራ መረጃ በአንድ ቦታ። ቀኖች በኢትዮጵያ አቆጣጠር።',
-    linkHint: 'የእያንዳንዱ ቤት ዋጋ፣ ክፍያና የሚጣሩ ጉዳዮች።',
-    back: 'የቤተሰብ ሰነዶች',
     add: 'ቤት ጨምር',
     empty: 'ገና ምንም ቤት አልተጨመረም።',
     emptyHint: 'ከላይ «ቤት ጨምር» ይጫኑ።',

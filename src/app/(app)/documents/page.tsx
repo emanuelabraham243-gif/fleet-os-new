@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { getI18n, type I18n } from '@/lib/i18n';
 import { requireViewer, isAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -147,20 +146,6 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         </details>
 
         <Chips items={catChips} />
-
-        {admin && (!category || category === 'FAMILY') ? (
-          // Family finances: house & real-estate payments (admins only).
-          <Link
-            href="/documents/houses"
-            className="mb-6 flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm hover:bg-muted-soft"
-          >
-            <span className="min-w-0">
-              <span className="block text-lg font-semibold">{t('houses.title')}</span>
-              <span className="block text-sm text-muted">{t('houses.linkHint')}</span>
-            </span>
-            <span aria-hidden="true" className="text-xl text-brand-ink">›</span>
-          </Link>
-        ) : null}
 
         <form method="get" action="/documents" className="mb-4 flex flex-wrap items-end gap-2">
           <input type="hidden" name="tab" value="general" />

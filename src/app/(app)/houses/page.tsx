@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { getI18n, type I18n } from '@/lib/i18n';
 import { isAdmin, requireViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -17,8 +16,7 @@ import { confirmHousePayment } from './actions';
 
 type SP = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const PATH = '/documents/houses';
-const BACK = '/documents?tab=general&category=FAMILY';
+const PATH = '/houses';
 
 type PropertyRow = {
   id: string; name: string; kind: string | null; location: string | null; house_no: string | null;
@@ -44,14 +42,7 @@ export default async function HousesPage({ searchParams }: { searchParams: Promi
   const i18n = await getI18n();
   const { t, locale } = i18n;
 
-  const header = (
-    <>
-      <Link href={BACK} className="mb-2 inline-flex min-h-12 items-center text-base font-medium text-brand-ink hover:underline">
-        ← {t('houses.back')}
-      </Link>
-      <PageHeader title={t('houses.title')} subtitle={t('houses.subtitle')} />
-    </>
-  );
+  const header = <PageHeader title={t('houses.title')} subtitle={t('houses.subtitle')} />;
   if (!isAdmin(profile)) {
     return (
       <div>

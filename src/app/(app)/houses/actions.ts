@@ -11,7 +11,7 @@ import { fieldErrorsFromZod, zChoice, zDate, zOptionalText, zText, zUuid } from 
 import { ethDateFromForm } from '@/lib/ethiopian-date';
 import { HOUSE_PAYMENT_KINDS, HOUSE_PLANS, HOUSE_STATUSES, splitChecks } from '@/lib/house-rules';
 
-const PATH = '/documents/houses';
+const PATH = '/houses';
 const emptyToUndef = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
 const checked = z.preprocess((v) => v === 'on' || v === '1' || v === 'true', z.boolean());
 
