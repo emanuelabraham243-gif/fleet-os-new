@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { requireViewer } from '@/lib/auth';
 import { daysBetween } from '@/lib/format';
-import { formValues, mapDbError, type FormState } from '@/lib/action-helpers';
+import { formValues, mapDbError, safeReturnTo, type FormState } from '@/lib/action-helpers';
 import { fieldErrorsFromZod, zChoice, zDate, zOptionalText, zUuid } from '@/lib/schemas';
 import { MAX_UPLOAD_BYTES, MIME_EXT, sniffMime } from '@/lib/file-sniff';
 import { DRIVER_DOC_TYPES, GENERAL_DOC_CATEGORIES, VEHICLE_DOC_TYPES } from '@/lib/maintenance-rules';
@@ -280,4 +280,64 @@ export async function documentFileUrl(
     .createSignedUrl(path, 60, download ? { download } : undefined);
   if (signErr || !signed) return { error: 'generic' };
   return { url: signed.signedUrl };
+}
+
+// ---------------------------------------------------------------- attach a file to an existing record
+// For documents saved without a photo/PDF (e.g. entered from a certificate before it was scanned).
+// Only fills an empty slot: a record that already has a file keeps it.
+
+const OWNER_COLUMN = { vehicle_documents: 'vehicle_id', driver_documents: 'driver_id', general_documents: 'category' } as const;
+const FOLDER = { vehicle_documents: 'vehicle', driver_documents: 'driver', general_documents: 'general' } as const;
+
+const attachSchema = z.object({ table: z.enum(DOC_TABLES), id: zUuid() });
+
+export async function attachDocumentFile(_prev: FormState, fd: FormData): Promise<FormState> {
+  const { profile } = await requireViewer();
+  const values = formValues(fd);
+  const returnTo = safeReturnTo(values.returnTo, '/documents');
+  const parsed = attachSchema.safeParse(values);
+  if (!parsed.success) return { error: 'generic' };
+  const { table, id } = parsed.data;
+
+  const file = fd.get('file');
+  if (!(file instanceof File) || file.size === 0) return { fieldErrors: { file: 'required' } };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: 'documents.fileTooBig' };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const mime = sniffMime(bytes);
+  if (!mime) return { error: 'documents.fileType' };
+
+  const supabase = await createClient();
+  const ownerCol = OWNER_COLUMN[table];
+  const { data: doc, error: docErr } = await supabase
+    .from(table)
+    .select(`id, file_path, ${ownerCol}`)
+    .eq('id', id)
+    .is('voided_at', null)
+    .maybeSingle();
+  if (docErr) return { error: mapDbError(docErr) };
+  if (!doc) return { error: 'notFound' };
+  const row = doc as unknown as Record<string, string | null>;
+  if (row.file_path) return { error: 'documents.alreadyHasFile' };
+
+  const filePath = `${profile.organization_id}/${FOLDER[table]}/${row[ownerCol]}/${crypto.randomUUID()}.${MIME_EXT[mime]}`;
+  const { error: upErr } = await supabase.storage
+    .from('documents')
+    .upload(filePath, bytes, { contentType: mime, upsert: false });
+  if (upErr) return { error: 'documents.uploadFailed' };
+
+  const { data: updated, error } = await supabase
+    .from(table)
+    .update({ file_path: filePath })
+    .eq('id', id)
+    .is('file_path', null)
+    .select('id');
+  if (error || !updated || updated.length === 0) {
+    await supabase.storage.from('documents').remove([filePath]); // best effort
+    return { error: error ? mapDbError(error) : 'documents.alreadyHasFile' };
+  }
+
+  revalidatePath('/documents');
+  revalidatePath('/vehicles', 'layout');
+  const sep = returnTo.includes('?') ? '&' : '?';
+  redirect(`${returnTo}${sep}saved=1`);
 }

@@ -11,6 +11,7 @@ import { DocumentForm } from './document-form';
 import { GeneralDocumentForm } from './general-document-form';
 import { CaptureDocumentForm } from './capture-document-form';
 import { DocFileActions } from './doc-file-actions';
+import { AttachFileForm } from './attach-file-form';
 import { vehicleLabel } from '@/lib/vehicle-file';
 
 type SP = Record<string, string | string[] | undefined>;
@@ -400,6 +401,7 @@ function DocCard({ d, ctx, muted = false }: { d: DocRow; ctx: Ctx; muted?: boole
         ) : (
           <p className="text-sm text-muted">{t('documents.noFile')}</p>
         )}
+        {!d.file_path && !muted ? <AttachFileForm table={table} id={d.id} returnTo={ctx.returnTo} /> : null}
         {d.file_path ? <DocFileActions table={table} id={d.id} path={d.file_path} name={d.title ?? label('documentType', d.document_type)} /> : null}
         {originalUrl ? (
           <a
@@ -496,6 +498,7 @@ function GeneralDocCard({
         ) : (
           <p className="text-sm text-muted">{t('documents.noFile')}</p>
         )}
+        {!d.file_path ? <AttachFileForm table="general_documents" id={d.id} returnTo={returnTo} /> : null}
         {d.file_path ? <DocFileActions table={'general_documents'} id={d.id} path={d.file_path} name={d.title} /> : null}
         {originalUrl ? (
           <a
