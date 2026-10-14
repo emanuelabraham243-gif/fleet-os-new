@@ -48,7 +48,7 @@ export const am: Widen<typeof en> = {
       GENERAL_SERVICE: 'አጠቃላይ አገልግሎት', OTHER: 'ሌላ',
     },
     documentType: {
-      INSURANCE: 'ኢንሹራንስ', ANNUAL_INSPECTION: 'ዓመታዊ ቁጥጥር (ቦሎ)', REGISTRATION: 'ሊብሬ',
+      INSURANCE: 'ኢንሹራንስ', CARRIER_LIABILITY: 'የአጓጓዥ ኃላፊነት ኢንሹራንስ', ANNUAL_INSPECTION: 'ዓመታዊ ቁጥጥር (ቦሎ)', REGISTRATION: 'ሊብሬ',
       MEDICAL_CERTIFICATE: 'የጤና ምስክር ወረቀት', DRIVING_LICENSE: 'መንጃ ፈቃድ', OTHER: 'ሌላ',
     },
     generalDocCategory: { FAMILY: 'የቤተሰብ', SCHOOL: 'የትምህርት ቤት', PERSONAL: 'የግል', OTHER: 'ሌላ' },

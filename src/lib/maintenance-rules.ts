@@ -4,7 +4,7 @@ export const SERVICE_CATEGORIES = [
   'OIL_CHANGE', 'TIRES', 'BRAKES', 'BATTERY', 'FILTERS', 'GENERAL_SERVICE', 'OTHER',
 ] as const;
 
-export const VEHICLE_DOC_TYPES = ['INSURANCE', 'ANNUAL_INSPECTION', 'REGISTRATION', 'OTHER'] as const;
+export const VEHICLE_DOC_TYPES = ['INSURANCE', 'CARRIER_LIABILITY', 'ANNUAL_INSPECTION', 'REGISTRATION', 'OTHER'] as const;
 export const DRIVER_DOC_TYPES = ['DRIVING_LICENSE', 'MEDICAL_CERTIFICATE', 'OTHER'] as const;
 // General file storage, not tied to a vehicle or driver. `category` is a plain text column
 // (see general_documents migration) so new buckets are an app-side list change, not a schema one.

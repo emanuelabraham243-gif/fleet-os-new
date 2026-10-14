@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { getI18n, type I18n } from '@/lib/i18n';
 import { isAdmin, requireViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { daysBetween, formatDate, formatEtb, todayAddis } from '@/lib/format';
+import { daysBetween, formatEtb, todayAddis } from '@/lib/format';
+import { formatEthDate } from '@/lib/ethiopian-date';
 import { toCents } from '@/lib/money';
 import { Badge, Card, Chips, EmptyState, Flash, PageHeader, type Tone } from '@/components/ui';
 import { rows } from '@/components/home/query';
@@ -138,7 +139,7 @@ export default async function HousesPage({ searchParams }: { searchParams: Promi
       <details className="mb-6 rounded-2xl border border-line bg-surface p-4">
         <summary className="flex min-h-12 cursor-pointer items-center text-lg font-semibold">{t('houses.add')}</summary>
         <div className="mt-3">
-          <HouseForm />
+          <HouseForm today={today} />
         </div>
       </details>
 
@@ -183,7 +184,7 @@ function dueText(i18n: I18n, today: string, iso: string): string {
   const { t, locale } = i18n;
   const n = daysBetween(today, iso);
   const rel = n < 0 ? t('houses.daysAgo', { n: -n }) : n === 0 ? t('houses.today') : n === 1 ? t('houses.tomorrow') : t('houses.inDays', { n });
-  return `${formatDate(iso, locale)} · ${rel}`;
+  return `${formatEthDate(iso, locale)} · ${rel}`;
 }
 
 function HouseCard({ x, i18n, today }: { x: Item; i18n: I18n; today: string }) {
@@ -354,7 +355,7 @@ function HouseCard({ x, i18n, today }: { x: Item; i18n: I18n; today: string }) {
                   <span className="font-semibold tabular-nums">{money(toCents(pay.amount))}</span>
                 </div>
                 <p className="break-words text-sm text-muted">
-                  {pay.paid_on ? formatDate(pay.paid_on, locale) : t('houses.noDate')}
+                  {pay.paid_on ? formatEthDate(pay.paid_on, locale) : t('houses.noDate')}
                   {pay.confirmed ? '' : ` · ${t('houses.unconfirmed')}`}
                   {pay.note ? ` · ${pay.note}` : ''}
                 </p>
@@ -400,7 +401,7 @@ function HouseCard({ x, i18n, today }: { x: Item; i18n: I18n; today: string }) {
         <details className="rounded-xl border border-line bg-surface p-3">
           <summary className="flex min-h-12 cursor-pointer items-center text-base font-semibold">{t('houses.edit')}</summary>
           <div className="mt-3">
-            <HouseForm house={formValues} />
+            <HouseForm house={formValues} today={today} />
           </div>
         </details>
         <VoidForm table="house_properties" id={p.id} returnTo={PATH} title={t('houses.removeHouse')} />

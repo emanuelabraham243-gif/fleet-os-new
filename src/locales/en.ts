@@ -45,7 +45,7 @@ export const en = {
       GENERAL_SERVICE: 'General service', OTHER: 'Other',
     },
     documentType: {
-      INSURANCE: 'Insurance', ANNUAL_INSPECTION: 'Annual inspection', REGISTRATION: 'Registration (Libre)',
+      INSURANCE: 'Insurance', CARRIER_LIABILITY: 'Carrier’s liability insurance', ANNUAL_INSPECTION: 'Annual inspection', REGISTRATION: 'Registration (Libre)',
       MEDICAL_CERTIFICATE: 'Medical certificate', DRIVING_LICENSE: 'Driving license', OTHER: 'Other',
     },
     generalDocCategory: { FAMILY: 'Family', SCHOOL: 'School', PERSONAL: 'Personal', OTHER: 'Other' },

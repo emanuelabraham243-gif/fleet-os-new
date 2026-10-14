@@ -4,7 +4,7 @@ import type { Widen } from '../../lib/i18n-core';
 export const en = {
   houses: {
     title: 'House & real estate payments',
-    subtitle: 'Price, paid, remaining and what still needs checking for every property.',
+    subtitle: 'Price, paid, remaining and what still needs checking for every property. Dates use the Ethiopian calendar.',
     linkHint: 'Prices, payments and open questions for each property.',
     back: 'Family documents',
     add: 'Add a house',
@@ -73,13 +73,14 @@ export const en = {
     markPaid: 'Mark as paid',
     removeHouse: 'Remove house', removePayment: 'Remove payment',
     noPermission: 'Only an administrator can see house payments.',
+    date: { day: 'Day', month: 'Month', year: 'Year', hint: 'Ethiopian calendar' },
   },
 };
 
 export const am: Widen<typeof en> = {
   houses: {
     title: 'የቤትና የሪል እስቴት ክፍያዎች',
-    subtitle: 'የእያንዳንዱ ቤት ዋጋ፣ የተከፈለ፣ የቀረ እና የሚጣራ መረጃ በአንድ ቦታ።',
+    subtitle: 'የእያንዳንዱ ቤት ዋጋ፣ የተከፈለ፣ የቀረ እና የሚጣራ መረጃ በአንድ ቦታ። ቀኖች በኢትዮጵያ አቆጣጠር።',
     linkHint: 'የእያንዳንዱ ቤት ዋጋ፣ ክፍያና የሚጣሩ ጉዳዮች።',
     back: 'የቤተሰብ ሰነዶች',
     add: 'ቤት ጨምር',
@@ -148,5 +149,6 @@ export const am: Widen<typeof en> = {
     markPaid: 'መከፈሉን አረጋግጥ',
     removeHouse: 'ቤቱን አስወግድ', removePayment: 'ክፍያውን አስወግድ',
     noPermission: 'የቤት ክፍያዎችን ማየት የሚችለው አስተዳዳሪ ብቻ ነው።',
+    date: { day: 'ቀን', month: 'ወር', year: 'ዓመት', hint: 'በኢትዮጵያ አቆጣጠር' },
   },
 };

@@ -8,6 +8,7 @@ import { isAdmin, requireViewer } from '@/lib/auth';
 import { parseMoney } from '@/lib/money';
 import { formValues, mapDbError, type FormState } from '@/lib/action-helpers';
 import { fieldErrorsFromZod, zChoice, zDate, zOptionalText, zText, zUuid } from '@/lib/schemas';
+import { ethDateFromForm } from '@/lib/ethiopian-date';
 import { HOUSE_PAYMENT_KINDS, HOUSE_PLANS, HOUSE_STATUSES, splitChecks } from '@/lib/house-rules';
 
 const PATH = '/documents/houses';
@@ -67,7 +68,10 @@ export async function saveHouse(_prev: FormState, fd: FormData): Promise<FormSta
   const values = formValues(fd);
   if (!profile) return { error: 'noPermission', values };
 
-  const parsed = houseSchema.safeParse(values);
+  // Dates are entered in the Ethiopian calendar and stored as Gregorian ISO dates.
+  const nextDue = ethDateFromForm(values, 'next_due_on');
+  if (nextDue === null) return { fieldErrors: { next_due_on: 'invalidDate' }, values };
+  const parsed = houseSchema.safeParse({ ...values, next_due_on: nextDue });
   if (!parsed.success) return { fieldErrors: fieldErrorsFromZod(parsed.error), values };
   const d = parsed.data;
 
@@ -137,7 +141,9 @@ export async function recordHousePayment(_prev: FormState, fd: FormData): Promis
   const values = formValues(fd);
   if (!profile) return { error: 'noPermission', values };
 
-  const parsed = paymentSchema.safeParse(values);
+  const paidOn = ethDateFromForm(values, 'paid_on');
+  if (paidOn === null) return { fieldErrors: { paid_on: 'invalidDate' }, values };
+  const parsed = paymentSchema.safeParse({ ...values, paid_on: paidOn });
   if (!parsed.success) return { fieldErrors: fieldErrorsFromZod(parsed.error), values };
   const d = parsed.data;
 

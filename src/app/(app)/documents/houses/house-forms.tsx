@@ -2,9 +2,10 @@
 
 import { useId } from 'react';
 import {
-  DateField, FormMessage, NumberField, SelectField, SubmitButton, TextAreaField, TextField, useFormAction,
+  FormMessage, NumberField, SelectField, SubmitButton, TextAreaField, TextField, useFormAction,
 } from '@/components/forms-core';
 import type { FormState } from '@/lib/action-helpers';
+import { ETH_MONTHS, isoToEth } from '@/lib/ethiopian-date';
 import { useI18n } from '@/lib/i18n-client';
 import { HOUSE_PAYMENT_KINDS, HOUSE_PLANS, HOUSE_STATUSES, type HousePaymentKind, type HousePlan } from '@/lib/house-rules';
 import { recordHousePayment, saveHouse } from './actions';
@@ -60,7 +61,64 @@ function CheckField({
   );
 }
 
-export function HouseForm({ house }: { house?: HouseFormValues }) {
+const selectClass =
+  'block min-h-12 w-full rounded-xl border border-input-border bg-surface px-2 py-2 text-base text-foreground';
+
+/** Day / month / year selects in the Ethiopian calendar, sent as `<name>__d|m|y` (see ethDateFromForm). */
+function EthDateField({
+  name, label, state, defaultValue, hint, today,
+}: {
+  name: string;
+  label: string;
+  state: FormState;
+  defaultValue?: string;
+  hint?: string;
+  today: string;
+}) {
+  const { t, locale } = useI18n();
+  const id = useId();
+  const errKey = state.fieldErrors?.[name];
+  const def = defaultValue ? isoToEth(defaultValue) : null;
+  const pick = (k: 'd' | 'm' | 'y', fallback: number | undefined) =>
+    state.values ? (state.values[`${name}__${k}`] ?? '') : fallback == null ? '' : String(fallback);
+  const thisYear = isoToEth(today).year;
+  const years = Array.from({ length: 23 }, (_, i) => thisYear - 12 + i);
+  const describedBy = [hint ? `${id}-hint` : '', errKey ? `${id}-err` : ''].filter(Boolean).join(' ') || undefined;
+  const common = { 'aria-invalid': errKey ? true : undefined, 'aria-describedby': describedBy, className: selectClass };
+  return (
+    <fieldset className="mb-4">
+      <legend className="mb-1 block text-base font-medium">{label}</legend>
+      <div className="grid grid-cols-[1fr_1.6fr_1.2fr] gap-2">
+        <select {...common} name={`${name}__d`} aria-label={t('houses.date.day')} defaultValue={pick('d', def?.day)} key={`d${pick('d', def?.day)}`}>
+          <option value="">{t('houses.date.day')}</option>
+          {Array.from({ length: 30 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>{i + 1}</option>
+          ))}
+        </select>
+        <select {...common} name={`${name}__m`} aria-label={t('houses.date.month')} defaultValue={pick('m', def?.month)} key={`m${pick('m', def?.month)}`}>
+          <option value="">{t('houses.date.month')}</option>
+          {ETH_MONTHS[locale].map((m, i) => (
+            <option key={m} value={i + 1}>{m}</option>
+          ))}
+        </select>
+        <select {...common} name={`${name}__y`} aria-label={t('houses.date.year')} defaultValue={pick('y', def?.year)} key={`y${pick('y', def?.year)}`}>
+          <option value="">{t('houses.date.year')}</option>
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+      {hint ? <p id={`${id}-hint`} className="mt-1 text-sm text-muted">{hint}</p> : null}
+      {errKey ? (
+        <p id={`${id}-err`} role="alert" className="mt-1 text-sm font-medium text-bad-ink">
+          {t(errKey.includes('.') ? errKey : `errors.${errKey}`)}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
+export function HouseForm({ house, today }: { house?: HouseFormValues; today: string }) {
   const { t } = useI18n();
   const { state, formAction } = useFormAction(saveHouse);
   const h = house;
@@ -107,7 +165,14 @@ export function HouseForm({ house }: { house?: HouseFormValues }) {
         options={HOUSE_STATUSES.map((s) => ({ value: s, label: t(`houses.status.${s}`) }))}
       />
       <TextField name="hold_reason" label={t('houses.field.holdReason')} state={state} maxLength={500} defaultValue={h?.hold_reason} />
-      <DateField name="next_due_on" label={t('houses.field.nextDueOn')} state={state} defaultValue={h?.next_due_on} />
+      <EthDateField
+        name="next_due_on"
+        label={t('houses.field.nextDueOn')}
+        hint={t('houses.date.hint')}
+        state={state}
+        defaultValue={h?.next_due_on || undefined}
+        today={today}
+      />
       <NumberField name="next_amount" label={t('houses.field.nextAmount')} state={state} defaultValue={h?.next_amount} />
       <CheckField
         name="finishing_pending"
@@ -154,7 +219,13 @@ export function PaymentForm({
         defaultValue={defaultKind}
         options={HOUSE_PAYMENT_KINDS.map((k) => ({ value: k, label: t(`houses.payKind.${k}`) }))}
       />
-      <DateField name="paid_on" label={t('houses.pay.paidOn')} hint={t('houses.pay.paidOnHint')} state={state} max={today} />
+      <EthDateField
+        name="paid_on"
+        label={t('houses.pay.paidOn')}
+        hint={`${t('houses.date.hint')} · ${t('houses.pay.paidOnHint')}`}
+        state={state}
+        today={today}
+      />
       <CheckField name="confirmed" label={t('houses.pay.confirmed')} state={state} defaultChecked />
       <TextField name="note" label={t('houses.pay.note')} state={state} maxLength={300} />
       <p className="mb-4 text-sm text-muted">{t('houses.pay.hint')}</p>
