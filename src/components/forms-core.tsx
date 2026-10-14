@@ -387,17 +387,20 @@ export function VoidForm({
   table,
   id,
   returnTo,
+  title,
 }: {
   table: string;
   id: string;
   returnTo: string;
+  /** Summary text; defaults to "Void record". */
+  title?: string;
 }) {
   const { t } = useI18n();
   const { state, formAction } = useFormAction(voidRecord);
   return (
     <details className="rounded-xl border border-line bg-surface p-3">
       <summary className="flex min-h-12 cursor-pointer items-center text-base font-medium text-bad-ink">
-        {t('void.title')}
+        {title ?? t('void.title')}
       </summary>
       <form action={formAction} className="mt-3">
         <input type="hidden" name="table" value={table} />

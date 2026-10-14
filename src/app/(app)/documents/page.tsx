@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getI18n, type I18n } from '@/lib/i18n';
 import { requireViewer, isAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -15,7 +16,6 @@ import { vehicleLabel } from '@/lib/vehicle-file';
 type SP = Record<string, string | string[] | undefined>;
 type Kind = 'vehicle' | 'driver' | 'general';
 
-const HOUSE_PAYMENTS_URL = 'https://claude.ai/artifact/3ufdpKXDhPxrVTkoVFiqP5';
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 const sanitizeSearch = (s: string) => s.replace(/[,()%]/g, ' ').trim();
 const PAGE_SIZE = 20;
@@ -127,22 +127,6 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         <Flash saved={sp.saved} error={sp.error} />
         <Chips items={tabs} />
 
-        {admin ? (
-          // House & real-estate payments live in their own page (shared database, Ethiopian dates).
-          <a
-            href={HOUSE_PAYMENTS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mb-6 flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm hover:bg-muted-soft"
-          >
-            <span className="min-w-0">
-              <span className="block text-lg font-semibold">{t('documents.housePayments')}</span>
-              <span className="block text-sm text-muted">{t('documents.housePaymentsHint')}</span>
-            </span>
-            <span aria-hidden="true" className="text-xl text-brand-ink">↗</span>
-          </a>
-        ) : null}
-
         <details className="mb-6 rounded-2xl border border-line bg-surface p-4">
           <summary className="flex min-h-12 cursor-pointer items-center text-lg font-semibold">
             {t('documents.add')}
@@ -162,6 +146,20 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         </details>
 
         <Chips items={catChips} />
+
+        {admin && (!category || category === 'FAMILY') ? (
+          // Family finances: house & real-estate payments (admins only).
+          <Link
+            href="/documents/houses"
+            className="mb-6 flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm hover:bg-muted-soft"
+          >
+            <span className="min-w-0">
+              <span className="block text-lg font-semibold">{t('houses.title')}</span>
+              <span className="block text-sm text-muted">{t('houses.linkHint')}</span>
+            </span>
+            <span aria-hidden="true" className="text-xl text-brand-ink">›</span>
+          </Link>
+        ) : null}
 
         <form method="get" action="/documents" className="mb-4 flex flex-wrap items-end gap-2">
           <input type="hidden" name="tab" value="general" />

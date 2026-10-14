@@ -47,6 +47,8 @@ const VOID_TABLES = [
   'vehicle_documents',
   'driver_documents',
   'incidents',
+  'house_properties',
+  'house_payments',
 ] as const;
 
 const voidSchema = z.object({
